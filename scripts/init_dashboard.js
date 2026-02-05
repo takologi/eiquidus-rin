@@ -78,12 +78,17 @@ mongoose.connect(connectionString).then(() => {
 });
 
 function processBlocks(startHeight, endHeight, callback) {
-  let currentHeight = startHeight;
   let successCount = 0;
   let errorCount = 0;
+  const batchSize = 100; // Process 100 blocks at a time
+  let currentBatch = startHeight;
 
-  function processNext() {
-    if (currentHeight > endHeight) {
+  console.log(`Processing in batches of ${batchSize} blocks...`);
+
+  function processBatch() {
+    const batchEnd = Math.min(currentBatch + batchSize - 1, endHeight);
+    
+    if (currentBatch > endHeight) {
       console.log(`\nProcessed ${successCount} blocks successfully, ${errorCount} errors`);
       
       // Initialize rolling cache
@@ -99,43 +104,68 @@ function processBlocks(startHeight, endHeight, callback) {
       return;
     }
 
-    // Get block data
-    Tx.findOne({ blockindex: currentHeight }).sort({ blockindex: 1 }).exec().then((tx) => {
-      if (!tx) {
-        console.log(`Warning: No transaction found for block ${currentHeight}`);
-        errorCount++;
-        currentHeight++;
-        processNext();
+    // Fetch a batch of transactions at once
+    Tx.find({ 
+      blockindex: { $gte: currentBatch, $lte: batchEnd } 
+    })
+    .select('blockindex blockhash timestamp')
+    .sort({ blockindex: 1 })
+    .exec()
+    .then((txs) => {
+      if (!txs || txs.length === 0) {
+        console.log(`Warning: No transactions found for batch ${currentBatch}-${batchEnd}`);
+        errorCount += (batchEnd - currentBatch + 1);
+        currentBatch = batchEnd + 1;
+        setImmediate(processBatch);
         return;
       }
 
-      const blockHash = tx.blockhash;
-      const timestamp = tx.timestamp;
+      // Create a map of block data for quick lookup
+      const blockMap = new Map();
+      txs.forEach(tx => {
+        if (!blockMap.has(tx.blockindex)) {
+          blockMap.set(tx.blockindex, {
+            hash: tx.blockhash,
+            timestamp: tx.timestamp
+          });
+        }
+      });
 
-      // Process the block
-      dashboardAggregation.processNewBlock(currentHeight, blockHash, timestamp, function(success) {
-        if (success) {
-          successCount++;
-          if (currentHeight % 100 === 0) {
-            console.log(`Processed block ${currentHeight}/${endHeight}`);
-          }
-        } else {
-          errorCount++;
-          console.log(`Failed to process block ${currentHeight}`);
+      // Process blocks in sequence
+      let blockIndex = 0;
+      const blockHeights = Array.from(blockMap.keys()).sort((a, b) => a - b);
+
+      function processNextBlock() {
+        if (blockIndex >= blockHeights.length) {
+          console.log(`Processed batch ${currentBatch}-${batchEnd} (${successCount} total)`);
+          currentBatch = batchEnd + 1;
+          setImmediate(processBatch);
+          return;
         }
 
-        currentHeight++;
-        
-        // Add small delay to avoid overwhelming the database
-        setTimeout(processNext, 10);
-      });
-    }).catch((err) => {
-      console.error(`Error fetching block ${currentHeight}:`, err);
-      errorCount++;
-      currentHeight++;
-      processNext();
+        const height = blockHeights[blockIndex];
+        const blockData = blockMap.get(height);
+
+        dashboardAggregation.processNewBlock(height, blockData.hash, blockData.timestamp, function(success) {
+          if (success) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+          blockIndex++;
+          setImmediate(processNextBlock);
+        });
+      }
+
+      processNextBlock();
+    })
+    .catch((err) => {
+      console.error(`Error fetching batch ${currentBatch}-${batchEnd}:`, err);
+      errorCount += (batchEnd - currentBatch + 1);
+      currentBatch = batchEnd + 1;
+      setImmediate(processBatch);
     });
   }
 
-  processNext();
+  processBatch();
 }
