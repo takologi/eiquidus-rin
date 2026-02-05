@@ -1,32 +1,24 @@
 #!/usr/bin/env node
 
 /**
- * Dashboard Initialization Script
+ * Dashboard Initialization Script - BULK OPTIMIZED VERSION
  * 
- * This script initializes the dashboard by:
- * 1. Processing historical blocks to populate dashboard_block_stats
- * 2. Computing daily aggregates
- * 3. Initializing rolling cache
- * 
- * Usage: node scripts/init_dashboard.js [start_height] [end_height]
+ * Uses MongoDB aggregation and bulk operations for maximum performance
  */
 
 const mongoose = require('mongoose');
 const settings = require('../lib/settings');
-const db = require('../lib/database');
 const dashboardAggregation = require('../lib/dashboard_aggregation');
-const Tx = require('../models/tx');
 const Stats = require('../models/stats');
 
 // Parse command line arguments
 const startHeight = process.argv[2] ? parseInt(process.argv[2]) : null;
 const endHeight = process.argv[3] ? parseInt(process.argv[3]) : null;
 
-console.log('=== Dashboard Initialization ===');
-console.log('This script will process historical blocks to populate the dashboard.');
-console.log('This may take a while depending on the blockchain size.\n');
+console.log('=== Dashboard Initialization (BULK MODE) ===');
+console.log('Using MongoDB aggregation and bulk operations for maximum speed\n');
 
-// Build connection string like database.js does
+// Build connection string
 const connectionString = 'mongodb://' + encodeURIComponent(settings.dbsettings.user) +
   ':' + encodeURIComponent(settings.dbsettings.password) +
   '@' + settings.dbsettings.address +
@@ -38,7 +30,7 @@ console.log('Connecting to database...');
 // Connect to database
 mongoose.set('strictQuery', true);
 mongoose.connect(connectionString).then(() => {
-  console.log('Connected to database');
+  console.log('Connected to database\n');
   
   // Get the current blockchain height
   Stats.findOne({ coin: settings.coin.name }).then((stats) => {
@@ -48,14 +40,14 @@ mongoose.connect(connectionString).then(() => {
     }
 
     const currentHeight = stats.last;
-    const start = startHeight || Math.max(1, currentHeight - 43200); // Default: last 30 days (43200 blocks at 60s/block)
+    const start = startHeight || Math.max(1, currentHeight - 43200); // Default: last 30 days
     const end = endHeight || currentHeight;
 
     console.log(`Current blockchain height: ${currentHeight}`);
     console.log(`Processing blocks from ${start} to ${end}`);
     console.log(`This will process approximately ${((end - start) / 1440).toFixed(1)} days of data\n`);
 
-    processBlocks(start, end, function(success) {
+    processBlocksBulk(start, end, function(success) {
       if (success) {
         console.log('\n=== Dashboard initialization complete ===');
         console.log('The dashboard is now ready to use.');
@@ -77,22 +69,25 @@ mongoose.connect(connectionString).then(() => {
   process.exit(1);
 });
 
-function processBlocks(startHeight, endHeight, callback) {
-  let successCount = 0;
-  let errorCount = 0;
-  const batchSize = 1000; // Process 1000 blocks at a time
+function processBlocksBulk(startHeight, endHeight, callback) {
+  const batchSize = 5000; // Process 5000 blocks at once with aggregation
   let currentBatch = startHeight;
+  let totalProcessed = 0;
+  const overallStart = Date.now();
 
-  console.log(`Processing in batches of ${batchSize} blocks...`);
+  console.log(`Processing in batches of ${batchSize} blocks using aggregation...\n`);
 
-  function processBatch() {
+  function processNext() {
     const batchEnd = Math.min(currentBatch + batchSize - 1, endHeight);
     
     if (currentBatch > endHeight) {
-      console.log(`\nProcessed ${successCount} blocks successfully, ${errorCount} errors`);
+      const totalTime = ((Date.now() - overallStart) / 1000).toFixed(2);
+      const avgSpeed = (totalProcessed / (totalTime || 1)).toFixed(2);
+      
+      console.log(`\n[SUMMARY] Processed ${totalProcessed} blocks in ${totalTime}s (${avgSpeed} blocks/sec)`);
       
       // Initialize rolling cache
-      console.log('Initializing rolling cache...');
+      console.log('\nInitializing rolling cache...');
       dashboardAggregation.initializeRollingCache(endHeight, function(success) {
         if (success) {
           console.log('Rolling cache initialized');
@@ -104,68 +99,19 @@ function processBlocks(startHeight, endHeight, callback) {
       return;
     }
 
-    // Fetch a batch of transactions at once
-    Tx.find({ 
-      blockindex: { $gte: currentBatch, $lte: batchEnd } 
-    })
-    .select('blockindex blockhash timestamp')
-    .sort({ blockindex: 1 })
-    .exec()
-    .then((txs) => {
-      if (!txs || txs.length === 0) {
-        console.log(`Warning: No transactions found for batch ${currentBatch}-${batchEnd}`);
-        errorCount += (batchEnd - currentBatch + 1);
-        currentBatch = batchEnd + 1;
-        setImmediate(processBatch);
-        return;
+    // Process entire batch with aggregation
+    dashboardAggregation.bulkProcessBlocks(currentBatch, batchEnd, function(success, count) {
+      if (success) {
+        totalProcessed += count;
+        console.log(`Progress: ${totalProcessed}/${endHeight - startHeight + 1} blocks\n`);
+      } else {
+        console.error(`Failed to process batch ${currentBatch}-${batchEnd}`);
       }
 
-      // Create a map of block data for quick lookup
-      const blockMap = new Map();
-      txs.forEach(tx => {
-        if (!blockMap.has(tx.blockindex)) {
-          blockMap.set(tx.blockindex, {
-            hash: tx.blockhash,
-            timestamp: tx.timestamp
-          });
-        }
-      });
-
-      // Process blocks in sequence
-      let blockIndex = 0;
-      const blockHeights = Array.from(blockMap.keys()).sort((a, b) => a - b);
-
-      function processNextBlock() {
-        if (blockIndex >= blockHeights.length) {
-          console.log(`Processed batch ${currentBatch}-${batchEnd} (${successCount} total)`);
-          currentBatch = batchEnd + 1;
-          setImmediate(processBatch);
-          return;
-        }
-
-        const height = blockHeights[blockIndex];
-        const blockData = blockMap.get(height);
-
-        dashboardAggregation.processNewBlock(height, blockData.hash, blockData.timestamp, function(success) {
-          if (success) {
-            successCount++;
-          } else {
-            errorCount++;
-          }
-          blockIndex++;
-          setImmediate(processNextBlock);
-        });
-      }
-
-      processNextBlock();
-    })
-    .catch((err) => {
-      console.error(`Error fetching batch ${currentBatch}-${batchEnd}:`, err);
-      errorCount += (batchEnd - currentBatch + 1);
       currentBatch = batchEnd + 1;
-      setImmediate(processBatch);
+      setImmediate(processNext);
     });
   }
 
-  processBatch();
+  processNext();
 }
