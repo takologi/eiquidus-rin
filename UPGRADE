@@ -1,0 +1,414 @@
+NOTE: As of v1.100.0-bae4d50, it is no longer necessary to manually restart the explorer after updating, as long as you are using the built-in update script `npm run update-explorer`. All other manual updates such as `git pull` will still require a restart to the explorer after updating.
+
+1.103.0 [February 02, 2025]
+-Removed defunct exchange stex
+-The default exchange has been changed to freiexchange
+-Fixed an error in the peer sync when node has no port
+-Added support for 3 top panel spacers
+-Expired TLS/SSL certificates are now automatically updated as they are renewed from certbot
+-Moved the database initialize call out of the instance code into the prestart script so that it is now only called once when you start the explorer even if you are running multiple cpus/threads
+-The database connection function now uses the default connection string in the event a connection string is not supplied
+-Fixed pm2 + forever detection for npm 9.7.2+
+-The initialize_data_startup() function is now being called in the update_explorer script to ensure that new changes to the database structure are automaticaly run after the explorer code is updated
+-All pages that auto-update data now also update the last updated date
+-Updated the mongodb dependency to v6.x
+-Minimum supported node.js version has changed to v16.20.1
+-Added support for the Xeggex exchange
+-Reindex now deletes data using the delete-database.js script which is much faster and more complete than the previous manual delete code used before
+-The delete-database.js script now accepts a parameter that suppresses the delete prompt when being called from the resync process
+-Reindex and normal block sync now reuse the same block sync code
+-Removed the readline-sync dependency
+-The ip address type masternode column has been renamed from Protocol to Network to prevent confusion with the other Protocol column used for the wallet protocol version number
+-Moved claim address data into its own collection to make it easier to work with and preserve that data if necessary in the future without being cluttered into the address collection
+-The index.js code has been refactored (reduced from 895 to 701 lines of code) which also cuts down the file size from 39KB to 26KB in size while still retaining the same functionality as before
+-Footer icon images can no longer be highlighted
+-Added ECMAScript Internationalization API support for older browsers
+-The delete-database script now checks the claimaddresses collection for data and if at least 1 record exists, it will ask an additional question to see if you want to preserve that data or delete everything
+-The prompt for deleting the database now happens after the locks have been properly checked
+-jqPlot has been completely removed and replaced with chart.js on all remaining charts and graphs (richlist pie chart and market candlestick chart)
+-chart.js was updated to v4.4.0 and later to v4.4.7
+-chartjs-plugin-crosshair has been updated to v2.0.0
+-Added 2 new small libraries to enable the chart.js candlestick chart: chartjs-chart-financial v0.1.1 and chartjs-adapter-luxon v1.3.1
+-Removed defunct markets (bleutrade, crex24, txbit, unnamed)
+-Improved the smoothness of opening and closing the claim address instructions
+-jQuery has been updated to v3.7.1
+-Luxon has been updated to v3.4.3
+-Datatables has been updated to v1.13.6
+-Font Awesome has been updated to v6.4.2 and all icons in the project have been updated to use the newest v6.x codes
+-OverlayScrollbars has been updated to v2.3.2
+-flag-icons (previously called flag-icon-css) has been updated to v6.11.1
+-Updated the main style.scss file with better color support for the new datatable loading animation color
+-Exor theme has been updated to v3.0.2 with a small fix to support the new datatable loading animation color
+-Fixed some unreadable text for the sketchy theme on the markets page
+-All external market apis have been normalized with a similar coding format, improved error handling with new wait times in between api calls to prevent abuse issues with sending too many requests too quickly
+-All general market code has been reviewed and improved where necessary to help prevent sync issues
+-Inactive markets are now removed from the markets collection on startup of the explorer to help prevent bloating the database
+-The yobit api url has been changed to the new url
+-The poloniex market has been updated to use the newest api
+-The southxchange exchange trading link has been changed to the new url
+-Fixed a bug with the freiexchange pair volume value when paired with LTC
+-Added a default value of zero for many of the fields for each market in the event that the data returned for a particular field is not numeric
+-The side menu toggle button is now an anchor tag instead of a div and no longer moves the search box when opening/closing the menu
+-Added a fix for opening/closing the side menu when the browser window is zoomed in or out which didn't always work properly in all browsers earlier
+-Javascript in the layout.pug has been moved around in an attempt to only load code into the client based on certain settings such as the type of menu (side or top) in order to slim down the loading of pages by not including unnecessary code
+-Fixed a bug on the richlist page where the last updated date and logo spinning animation would fail to load if the distribution chart was disabled in the settings
+-The /ext/getsummary api has been modified to only return the connection and block counts when necessary
+-The getmasternodecount rpc api will no longer fetch data unless it is enabled in settings
+-Added a crowdfunding section to the README
+-Updated the README by splitting off the contact info into its own "Developer Contact" section and added a link to the "Premium Support" section
+-Updated the README with new recommended versions for Node.js and MongoDB
+-Updated the README with MongoDB install instructions for ubunutu 22.04 for the newest 7.x series of MongoDB
+-Updated the README with some new options in the "Donations / Support Us" section
+-Added an optional USD price panel
+-Added an optional USD market cap panel
+-Added USD price to the getsummary API
+-Updated the mongoose dependency to v8.x along with some code updates to support new breaking changes
+-Added a new default market sync option for averaging the prices across multiple supported exchanges
+-Added a market sync option for fetching the market price directly from the coingecko api instead of calculating it via supported exchanges known to the explorer
+-Added a new root setting option for default_coingecko_ids which allows presetting symbols to their associated internal coingecko id to help prevent matching to the wrong currency with same symbol via coingecko api calls
+-Fixed an issue where the explorer would fail to start with an enabled exchange that had no defined trading pairs
+-Added a coingecko api key option since the free "keyless" coingecko api will be deprecated in the near future (as of Feb 2024 or later)
+-Updated the README to change the sample crontab from 2 to 5 minute intervals for the market sync since the coingecko api will soon force free users to the keyed api which only allows making 1 api call every 5 minutes without running out of credits for the month
+-Updated the README with new urls to the Exor crowfunding / task list page
+-Removed defunct exchange bittrex
+-Fixed a bug that could sometimes render the sidebar in a funny position when the page loads
+-Added support for a couple masternode list and count formats that do not have a separate fieldname for each value
+-Masternode grid columns are now shown or hidden based on whether there is any data
+-Fixed the spacing of masternode page columns after the table is loaded
+-Fixed an issue that could crash the explorer when trying to use a masternode count value that is a single number (A single number masternode count is not valid or usable since it cannot differentiate the number of good and bad nodes, but the explorer will no longer crash when given this data)
+-Added support for saving and displaying the algorithm used to mine a particular block for coins that support this feature and have the algorithm data stored in the raw block data
+-Fixed a javascript error when resizing the browser window before the page finishes loading
+-Added support for the Nonkyc exchange
+-Added OHLCV chart support for the xeggex market
+-Removed defunct exchange SouthXchange
+-Updated the README with an updated yobit url
+-Fixed a bug where the market sync could crash when calculating the USD price if the base pair of the markets_page.default_exchange.trading_pair value was not found in coingecko's vs_currencies list from https://api.coingecko.com/api/v3/simple/supported_vs_currencies (for example, using USDT as the default base pair)
+-Added multiple captcha options for form submission on the claim address form (Supported captchas include Google reCaptcha v3 (score-based), Google reCaptcha v2 (checkbox and invisible) and hCaptcha ("Always Challenge" mode))
+-Removed the ability to claim an address that has 0 transactions
+-The "Claim" button is now disabled after submitting to help prevent double submissions on the claim address page
+-Fixed the hCaptcha submission form so that it now clears itself after submitting the claim address form
+-CSS is now only compiled when necessary on startup when new changes are detected
+-Fixed a bug which could cache the top panel summary data when using the browser Back button and prevent it from updating properly until after reloading the page
+-Added plugin support which allows extending the normal functionality of the explorer with new database collections, menus, pages and apis + open up a new url for data to be sent from the plugin to the explorer
+-Locale strings are now loaded and shared out via the settings so there is generally no more need to explicitly include the locale.js file
+-The locale object has been updated to `localization` within the explorer
+-A number of new locale strings have been added and their values replaced with the locale string within the explorer
+-Added plugin support verbiage and a link to the generic-snapshots crowdfunding task to the README
+-Added the explorer version # to the header of all pages in a hidden element to make it easier to determine which commit a particular explorer is updated to even when the version # is removed from the powered by text in the footer
+-Updated the polyfill script to v4.8.0
+-Updated the bad-words dependency to v4.0.0 and resolved all breaking changes for the new version
+-Improved logo panel spacing on small screens
+-Fixed deprecation warnings for all applicable css themes
+-The chartjs-plugin-crosshair chart plugin has been updated to v2.0.5 via a forked version that has a working sync feature which is now available as a new setting option for use with the network charts
+-Added a new max_hours setting to display chart data for a certain number of hours instead of a fixed set of records which can help reveal holes in the sync process for the explorer and/or blockchain
+-Added a number of new network chart settings to control display of the chart title, legend, a new vertical block line option, chart height, an option to force 2 charts to appear on their own row or beside each other, and an option to force a chart to take up all available space in the chart box without extra padding
+-Added a new dependency chartjs-plugin-annotation v3.1.0 to display block lines in new hourly charts
+-Fixed a missing document ready check on resizing the browser screen which caused some glitchy elements to not fix themselves as they should
+-The block_parallel_tasks feature has been improved and fixed so that it is now safe to cancel (Ctrl+C) or kill (kill cmd not kill -9) the task and resume the sync later without missing transactions
+-Updated the default block_parallel_tasks value to 8 threads which seems to be the sweet spot for any type of cpu
+-Numerous improvements to the benchamark script to utilize new benchmark settings, auto-add credentials to the benchmark database, reuse the same sync code as the regular block sync instead of using a copy of the code and other small improvements
+-Added a new cmd to run the benchmark script `npm run benchmark`
+-Updated the README to include the new benchmark script instrutions + include multi-threaded sync as a feature
+-The "Maximum call stack size exceeded" error is now handled internally by the block sync script in a way which will capture the error and re-launch the sync using a larger stack size and have the sync resume from where it left off
+-Added a new option for sync.elastic_stack_size which is used to determine how much memory should be used to increase the stack size for the block sync after encountering the "Maximum call stack size exceeded" error
+-Fixed an issue with the block sync when using more than 1 thread that could sometimes cause the flattened txes value in the coinstats database to be written incorrectly (Use `npm run reindex-txcount` to fix this issue without needing to reindex the entire database)
+-Updated the benchmark script so that it can also benefit from being able to capture the "Maximum call stack size exceeded" error even though the timing will be off so it outputs a new warning in that scenario which instructs to run the benchmark again with a higher stack size to properly capture the benchmark time
+-Removed the "Maximum call stack size exceeded" error notes from the "Known Issues" section of the README
+-A number of functions have been rewritten to be more optimized and faster: calculate_total, is_unique, convert_to_satoshi, get_input_addresses, processVoutAddresses, prepare_vout, prepare_vin
+-Txes are now written to database via bulk writes which helps improve the sync speed and also controls memory usage with batching to write data once a certain threshold is reached
+-update_address function changed to update_addresses since it now bulk writes the addresses in batches to improve sync speed and also controls memory usage with batching to write data once a certain threshold is reached
+-The syncLoop function has been completely removed from the project and replaced with async library loops or even normal "for" loops in some cases which greatly improves sync speeds over large batches of data
+-Fixed an issue with the flattened count of txes that is saved to the coinstats collection which could save incorrectly when using more than 1 thread
+-Fixed an issue with the block sync which caused an unwanted delay when syncing less blocks than the amount of threads used to sync the data
+-Fixed an issue with vout data processing that could sometimes populate data out of order
+-Added a new sync.batch_size setting used to determine how many records (txes, addresses, addresstxes) should be saved in a single database transaction
+-Added a new wait_for_bulk_database_save setting used to increase the block sync speed at the cost of not returning any error msgs for data that failed to save
+-get_input_addresses function no longer returns in the exports section of the explorer.js file since it is only referenced in that file
+-Updated explorerspec tests to use the newest function changes for any tests that needed to be updated
+
+1.102.0 [June 14, 2023]
+-Added better support for NODE_ENV
+-Added a new setting to redirect http to https
+-Removed the "Full Setup Guide" section from the README
+-Updated the README with new recommended versions for Node.js and MongoDB
+-Updated the README with more text to make it more clear that EVM blockchains are not supported
+-Updated the README with an extra step for exiting the mongo shell in the "Database Setup" section
+-Updated the README by removing the "Quick Install Instructions" section title and now all install instructions are under the main Installation section
+-Updated the README with new steps to the "Pre-Install" section for installing node.js and mongodb
+-Updated the README with a new entry to the "Known Issues" section to explain the "Callback was already called" error msg
+-Updated the README with a new entry to the "Known Issues" section that better explains the padLevels warning msgs when using the forever module
+-Updated the README with alternate instructions to the "Manually Link TLS/SSL Certificates to the Explorer" section which better explain which method should be used depending on whether the explorer is running on port 80 for http traffic or not
+-Added an rpc cmd queue
+-Fixed an issue that caused 2 or more masternodes created in the same transaction to be treated as the same entry
+-The "Powered By" footer text is now configurable
+-Better handling of null market data
+-The mongoose and mongodb dependencies have been updated to the most recent versions in package.json which required fixing many breaking changes to a number of files in the explorer
+-Fixed a few Deprecation Warning msgs for the Flatly, Litera and Solar themes
+-Added better quote support for the coin name and symbol settings
+-Added support for handling orphaned blocks along with a new optional page to display them
+-The coinbase address now updates sent totals from POS rewards and other transactions that have vout but no vin addresses
+-The block and transaction pages now display a warning when viewing an orphaned block or tx
+-Fixed the incorrect confirmations value in the gettx api
+-Fixed the "DeprecationWarning: Mongoose: the `strictQuery` option will be switched back to `false` by default in Mongoose 7" warning msg from newer mongoose versions
+-Added new settings to improve the network chart precision for small decimal values like 0.00028363 which were previously being rounded to 0
+-Removed the jstransformer-markdown-it dependency
+-Added new settings to allow hiding the port number on the network page tables
+-Fixed the footer width calculations
+-Improvements to the core layout including new scrollbars on the mobile menu items when there are too many items to fit on the screen at once
+-Added side menu support
+-Fixed the peer sync for addresses without country data
+-Fixed a divide by zero error when calculating market change
+-Added support for the Unnamed exchange
+-Added support for the Txbit exchange
+-Better handling of stop/kill sync processes (The SIGINT and SIGTERM signals are now being caught and handled in the sync.js file so that most options for syncing blocks, markets, peers, masternodes, etc. are now being gracefully shut down instead of killed in the middle of the process. This should help prevent data anomalies when you need to stop or kill a sync process)
+-Added support for vin/vout hashes inside an array
+
+1.101.0 [July 09, 2022]
+-Locale string tx_hash was changed from "Hash" to "Tx Hash" to be clearer about which Hash it refers to
+-TXid was renamed to "Tx Hash" throughout the site
+-Removed the coin name from the tx hash label on the transaction page
+-Removed the coin name from the block hash label on the block page and changed the text "block" to "Block Hash"
+-The header_logo.png was renamed to header-logo.png
+-Added 2 optional arguments to the update script to update the explorer code only (`npm run update-explorer "explorer-only"`) and another option to update outdated dependencies only (`npm run update-explorer "dependencies-only"`)
+-Added a custom.js file that can be used to add custom javascript code without affecting the ability to do a `git pull` or `npm run update-explorer` update
+-Added "copy to clipboard" buttons to the network addnode tables
+-Network addnode table data no longer wraps onto multiple lines when the data cannot fit on the screen
+-Fixed a bug which caused the error page to not show a proper page title
+-Fixed a bug which caused the locking mechanism to fail on non-windows computers when the explorer is installed to a directory that has a space character somewhere in the absolute path
+-The update_explorer.js script has been improved with better spacing and the ability to restart the explorer automatically to ensure new changes take effect immidiately (works with npm start, pm2 and forever)
+-The code to compile scss to css has been moved from the prestart script into its own compile_css.js script which is now called from the update-explorer.js script to apply css changes after update
+-The cluster code now handles a custom restart msg which is used to restart the explorer from the update explorer process
+-Pm2 and Forever are now referenced by the name 'explorer' instead of ./bin/instance or ./bin/cluster
+-Added reload/restart scripts to the package.json for pm2 and forever
+-Pm2 and forever now write a pid file to the tmp directory when started. NOTE: Forever is now started from the prestart script due to a bug in forever that prevents the pid from being written to a different directory without the absolute path
+-Fixed a bug which caused the prestart script to be run twice when starting the explorer with `npm start`
+-The cluster code now accepts a numeric argument to force a specific number of instances to be loaded
+-The `npm run start-instance` cmd now loads using the cluster code with a single instance
+-The is_locked function now accepts an optional 'silent' argument to prevent displaying msgs while checking for pid/lock files
+-Added a port_filter setting to the 3 network_page tables which allows showing only results from peers on the selected port
+-Added a hide_protocols setting to the 3 network_page tables which allows hiding results from peers on the selected protocols
+-Added a Port column to the data table on the Network page Connections tab
+-The data table on the Network page Connections tab is now sortable
+-The peer sync now refreshes data for peers that existed since last sync
+-Adding and updating peers now displays the port # in the log output
+-The /ext/getnetworkpeers api is now sorted by ip4/ip6, address and port which also means all data on the Network page is sorted this way by default as well
+-Improved loading speed of the network page by combining 3 separate database calls into 1
+-Added support for the Dex-Trade exchange
+-Added support for the FreiExchange/FreiXLite exchange (this exchange has 2 separate sites using the same api, so new functionality was added to the explorer to handle alt markets like this with an alt market name, alt logo, market url and an "isAlt" function to determine if the alt name/logo should be used)
+-Support was added for the getblockchaininfo rpc cmd which now allows the coin supply to be populated via this function
+-The network difficulty chart now supports 2 datasets: POW and POS
+-Fixed a bug with the network difficulty chart where it would fail to populate if the shared_pages.difficulty setting was 'Hybrid'
+-NetworkHistory.difficulty field was renamed to difficulty_pow and a new difficulty_pos field was added
+-The shared_pages.page_header.network_charts.difficulty_chart.line_color setting was renamed to pow_line_color
+-The shared_pages.page_header.network_charts.difficulty_chart.fill_color setting was renamed to pow_fill_color
+-The favicon functionality was updated so that instead of using a single file for the favicon, there are now 4 size options for a more modern favicon experience
+-Fixed a bug which did not properly handle certain special characters in the mongo username/password such as % or @ for example
+-Updated the README with details of the "bind EACCES" error msg that can appear when you try to run the explorer on a port number lower than 1024
+-Updated the README with instructions for using the newer node.js production flag (--only=prod) instead of the old flag (--production)
+-Added pm2 and forever to the dev dependencies list to help prevent package.json from being automatically updated/changed in production which could make `git pull` fail due to the changes
+-Both dependencies and dev dependencies sections have been sorted alphabetically to help prevent auto package.json changes
+-The custom user-agent strings for http requests have all been removed
+-Fixed an issue with the crex24 market chart that could cause it to be overpopulated with data and therefore unreadable/unusable
+
+1.100.0 [May 29, 2022]
+-Added a custom.scss file that can be used to add custom css changes without affecting the ability to do a git pull update
+-Added new update script to A) grab the latest code form github, B) update all dependencies, and C) run the database initialize function to ensure new changes take effect immidiately
+-freegeoip.app now requires an api key so the peer sync has been updated to use reallyfreegeoip.org instead
+-Added extra error checking to the peer sync so that it will error out when the geolocation service does not return a proper object
+-Added locks to all sync processes (blocks, markets, peers, masternodes) as well as "create backup", "restore backup" and "delete database" functions. This helps prevent problems with syncing data while a backup is in progress for example
+-The code to initialize certain database collections on startup was moved into database.js and is now called from restore_backup.js and delete_database.js. This effectively allows the database to be deleted or restored to a completely different backup while the explorer is still running
+-Lock functions (create_lock, remove_lock, is_locked) were moved into explorer.js for better reusability and rewriten to be synchronous
+-is_locked function now accepts an array of lock files to be able to check for multiple locks in a single call
+-remove_sync_message() function was moved into database.js so that restore_backup.js and delete_database.js can also check for and remove the sync msg if it exists
+-Rewrote a number of internal scripts to allow for better cross-platform support (Windown, MacOS, Linux)
+-Backup and Restore scripts now use mongo's own encryption instead of tar.gz by default. Older tar.gz backups can still be restored as long as the tar.gz suffix is explicitly added
+-Backup and Restore scripts now support connecting to remote database based on the mongo details in settings.json
+-Added a link to exchange on markets page
+-Added the current git commit id to end of explorer version
+-Fixed the format of ipv6 addnodes on the network page
+-Added a Hashrate chart to the page header
+-Added a Difficulty chart to the page header
+-Improved the Index/Update sync feature (Shifted some of the code around to be run in a better order)
+-update_heavy has been moved into a proper callback function which is now only called for index and reindex syncs right near the end of the process instead of at the beginning
+-Added some tweaks and improvements to the Reindex sync feature (Added an "Are you sure" prompt before starting the reindex, All necessary coin stat data is cleared before starting, More and better messages about what is being done during the process, Shifted some of the code around to be run in a better order)
+-Added unique page titles for each individual page
+-Added code to prevent caching of local css files
+-Bootstrap was upgraded to latest version (v5.1.3) which required tons of changes to the UI. Many little UI problems have been resolved
+-Bootswatchs themes have all been upgraded to support bootstrap v5.1.3 + 4 new themes were added (Morph, Quartz, Vapor and Zephyr)
+-Exor theme update to v3.0.0 with support for bootstrap v5.1.3
+-Many layout and UI improvements such as more consistent hover effects on most tables and more readable text across all themes
+-All libraries have been updated and load a CDN url instead of local file where applicable
+-Codebase was updated so that Node.js must be updated to at least v14.13.1 to fix breaking errors in a few of the updated dependencies
+-Added an optional block_start parameter to check mode
+-Check mode no longer updates the last block height
+-Added a .npmrc file for cleaner npm error msgs
+-Added new npm scripts to make syncing and running other explorer tasks easier, without needing to remember longer command syntax
+-Added support for reading scriptPubKey.address
+-Added Southxchange exchange to markets
+-Added a new setting to decode tx OP_RETURN values
+-Market sync now sets the last USD price based on the default market pair even if it is not BTC
+-Removed the coindesk api which was only really useful for getting the USD price of BTC
+-Added a couple coingecko apis which are used to get the current USD value of the default market pair
+-Fixed issues loading site in safari browser (Safari behaves differently than other browsers and seems to require the url prefix to be present when loading external libraries to prevent CORS errors)
+-Many blockchains allow you to use addnodes without a port # and it will assume the default port internally, but the explorer was failing to parse these peers because it was expecting a port. This is now fixed and will display the peer data without a port in these cases
+-Added support for newer (deterministic) Dash masternode format
+-More graceful shutdown of node cluster on 'npm stop' with better cleanup of resources on exit
+-Added new stop_explorer.sh script which looks up the explorer port # via settings file and closes the application running on that port # instead of saving and killing the process by pid as it did before
+-Added support for pm2 and forever using 'npm run start-pm2' and 'npm run start-forever' respectively
+-pm2 is automatically installed when starting with 'npm run start-pm2' if it is not already installed
+-forever is automatically installed when starting with 'npm run start-forever' if it is not already installed
+-Reorganized the structure and order of calls within the /ext/getsummary api to allow for returning just the connection and block counts for pages that have show_panels set to false
+-Combined two script sections into one on the address page
+-Changed the shorthand $(function() into $(document).ready() for consistency on the claim address page
+-Added an api page setting to hide/show logo
+-All pages (including the reward and error pages) were updated to include options for displaying a configurable page header with title, image, description and in some cases a last updated date
+-The error page was restructured slightly to display a different description based on the type of error (page not found error vs problem loading page error)
+-Added new setting options to the `shared_pages` setting for `page_title_image` which allows changing the page title image displayed on applicable pages and also determines whether it uses a flip/spin animation or not
+-Added a collection of new `page_header` settings to all pages that control displaying the new page title + image + description and also moved the last updated date from applicable pages into this section as well
+-Existing `show_last_updated` settings that were moved a level deeper into the `page_header` have been automatically mapped to the new setting location upon statup to help older installs to work better out-of-the-box
+-Locale strings now support replacement text such as {1} and {2} that get automatically replaced with proper values when loaded to allow for locale strings that support dynamic text
+-Fixed an issue with too much empty space in the page header (especially in mobile and tablet modes) when `show_panels` was set to false on any page
+-Removed unused css class 'loading'
+-Added new settings to hide/show panels on each page
+-Added a new `shared_pages.page_header.search.position` setting that determines where the search bar is located (valid options include the old 'below-header' and the new 'inside-header' options)
+-`shared_pages.page_header.show_search` setting has been re-mapped to `shared_pages.page_header.search.enabled`
+-Updated the search placeholder locale text
+-Changed the Explorer menu item icon from a magnifying glass to a cubes/blocks icon
+-Updated css rules to fix some small glitches and allow the new 'inside-header' search option to function
+-Fixed a glitch with header-panel height not working on some browsers
+-Added a new prestart npm script
+-Fixed + formatted date/time values across entire site using Luxon
+-Added new date/time settings for display format, timezone (utc or local) and an option to enable alternate timezone tooltips
+-All markets now return Trade History timestamp values as unix timestamp values formatted in seconds
+-Added TLS/SSL support
+-Added new address_page.enable_hidden_address_view setting which controls whether the special hidden_address address page can be viewed
+-Added new address_page.enable_unknown_address_view setting which controls whether the special unknown_address address page can be viewed
+-Permanently disabled route to special coinbase address
+-Added better unique checks for vout/vin
+-Added full zksnarks tx support
+-Special addresses are now always omitted from the richlist
+-Improved restore backup script
+-Improved delete database script
+-Added support for bitcoin P2PK scripts/txes
+-Added a tx_type field to the tx model which is typically null for "normal" transaction types, but can also display 'p2pk' for bitcoin txes which require addtional encoding to reveal the P2PKH address as well as 'zksnarks' for transactions with hidden sender or receiver data
+-Additional fixes for how data is displayed when a valid wallet address cannot be found
+-Added some small updates to how zksnarks transactions display hidden sender/receiver data
+-Went through all files and did a bit of a code cleanup
+-Added homepage screenshot to readme
+-Fixed the stex 24h stats volume column which was displaying btc volume
+-Added btc volume column to 24 stats for stex market
+-Update altmarkets api to v2
+-Improved the display of the market page so that as long as one section has data (stats, buys, sells, trade history) the page will load properly even if it's only one section that isn't blank. Previously it would display an error if just one section was blank.
+-Added the coin name beside the market pages volume header column in the 24h stats section
+-Fixed a bug that was displaying an error when the summary value from the 24h stats section was supplied but was a blank string or '-' character
+-Better success/error message during market sync
+-Small readme formatting changes
+-Added ZWSP to prevent address copy/paste issues
+
+1.99.0 [February 05, 2021]
+-Added new sync option for reindex-last to rescan and flatten the last blockindex value for faster access
+-Added new sync option for reindex-txcount to rescan and flatten the tx count value for faster access
+-Added new sync option for reindex-rich to clear and recreate the richlist data
+-Improved loading of settings including warning of missing and/or invalid settings and the ability to load the explorer using defaults without a settings.json file
+-Restructured the settings.json.template and settings.js files with better groupings
+-Added better comments for improved explanations of all settings
+-Better handling of page length options on all datatables; Page length options are now configurable and also only display options based on limits set by certain items_per_page and max_items_per_query settings
+-Markets have been extended to support unlimited trading pairs for each exchange
+-Richlist page now allows better separation of the top list(s) and the wealth distribution table and chart (you can now hide or show sections as desired)
+-Richlist page now allows for better burned coin support (Hide burned coin addresses from lists and totals even when the burned coin amounts are still included in the total coin supply value)
+-Block page now only displays the raw block link if the api_page.public_apis.rpc.getblock.enabled settings is set to true
+-Transaction page now only displays the raw tx link if the api_page.public_apis.rpc.getrawtransaction.enabled setting is set to true
+-Rate limiting class has been made global and is now used to limit market requests
+-getnetworkhashps rpc call now returns a '-' if shared_pages.show_hashrate is not set to true
+-Searching for unsycned blocks/txs no longer saves the data locally but instead still shows the data on screen. This helps prevent syncing data out-of-order (This eliminates the need for db_index.pid which has been removed)
+-Coin supply is now always taken from the stats collection database instead of from the wallet via rpc command in all cases except when syncing
+-Added new social_links setting to allow adding as many custom links as desired including the ability to display as image or fontawesome icon
+-Removed old hardcoded settings for twitter, facebook, google+, bitcointalk, github, slack, discord, telegram, reddit, youtube and custom website link
+-Removed unnecessary includes for address_history.pug, net_addnodes.pug, net_list.pug, rl_balance.pug, rl_received.pug and restored code in place of include
+-Renamed /ext/connections to /ext/getnetworkpeers and added it to list of public apis on the /info page
+-/ext/getsummary now only returns the online and offline masternode counts if the getmasternodecount api is available and enabled
+-Renamed /ext/summary to /ext/getsummary and added it to list of public apis on the /info page
+-Added /ext/getaddresstxs to the list of public apis on the /info page + updated the return data so that it returns a named object array for public api for better readability and still returns the same array list for internal datatable use
+-Updated /ext/getlasttxs so that it returns a named object array for public api for better readability and still returns the same array list for internal datatable use
+-Added new configurable settings to allow displaying a "last updated date" timestamp for: index, reward, masternode, movement, network, richlist and market pages
+-Pages disabled via settings are now completely disabled on the front-end whereas before some were still accessible via exact url
+-Added a new api /ext/getmasternoderewards which returns a list of masternode reward transactions for a single address since a particular block height
+-Added a new api /ext/getmasternoderewardstotal which returns the total masternode rewards earned for a single address since a particular block height
+-/ext/getbasicstats api now only includes the masternode count if the getmasternodecount api is available and enabled
+-Added a new "Masternodes" page which displays the current list of masternodes on the network
+-Exor theme updated to v2.0.0 with support for bootstrap v4.5.3
+-All coind + extended public api calls can now be enabled/disabled individually via settings
+-Added a new setting to display an alternate "header logo" in the page header
+-Added a new setting for displaying a coin logo image top panel
+-Added a new setting for displaying a 'Market Cap' top panel
+-Added 16x16 logo images to markets
+-Show spinning loading icons in top panels before data is loaded
+-Better reusability of rl_labels.pug
+-Added new market settings for accessing multiple markets (Turn markets header menu into a dropdown with multiple market selection and/or enable a multi-market select box on all market pages)
+-Fixed and added better tooltips where applicable
+-Wallet api security is now dynamically controlled by the new api_cmds settings
+-Restored the jasmine testing functionality along with some sample tests for debugging purposes
+-Added new settings for changing header/footer/thead background color via bootstrap css classes
+-All unnecessary/unused data is now filtered from ajax-enabled datatables to make ajax calls cleaner and easier to read
+-Updated JQuery to v3.5.1
+-Updated Bootstrap to v4.5.3
+-Updated DataTables to v1.10.22
+-Updated FontAwesome to v5.15.1
+-Updated Chart.js to v2.9.4
+-Updated flag-icon-css to v3.5.0
+-All scripts now load minified
+-Removed unused/unnecessary scripts (moment.js and some jqPlot plugins)
+-Scripts that are not used on every page are now only loaded on pages where they are needed (jqPlot, Chart.js and flag-icon-css)
+-Default website language to English
+-Enable unicode support
+-Removed unused images
+-Many internal structure changes to make the code cleaner and easier to find and read
+-Reward page rewritten to support Chart.js v2.9.4
+-All bootswatch themes updated to newest versions (support for bootstrap v4.5.3)
+-Added sass support
+-Added new settings for sticky header/footer support
+-Added better error checking for invalid markets
+-Added the ability to lookup unsynced transactions (search for txid that has not yet been synced)
+-Fixed a bug in the index sync to prevent gaps in the block data
+-Added a new setting to determine how many blocks to sync before saving stats
+-Added new settings to customize footer height + social link sizes
+-Improved long index sync warning functionality
+-Enabled responsive/mobile support
+-format_unixtime function is now used to format all date values
+-Fixed all "collection.count is deprecated" warnings
+-Fixed startup error ERR_INVALID_ARG_TYPE when using node.js 14+
+-Greatly improved and simplified markets functionality, including generic markets page that is consumed by all markets now
+-Added last_txs to /ext/getaddress api
+-Updated jqPlot to v1.0.9.d96a669
+-Network peers list now displays flag icons for country data
+-Explorer name and version now displayed in footer
+-Added the ability to index blocks in parallel for dramatic speed increases during blockchain sync (there is a known issue with this feature that can cause historical balance data to be out-of-sync)
+-Added new claim address feature with bad word filters which allows anyone to set custom display names for wallet addresses that they own using the 'Sign Message' feature from their local wallet (Claimed addresses now replace actual wallet addresses across all pages of the site)
+-Added new use_rpc setting to allow explorer to get wallet data from rpc directly or still consume the public apis as before
+-All numerical values now use a separate CSS class to display digits after decimal place
+-Added historical balance to address history data
+-Peers sync now uses freegeoip.app for IP geolocation
+-Added new Network tab with info to easily get addnode data for Wallets
+-Added new /ext/gettx api
+-Fixed a number of cluster issues that broke support for newer node versions
+-Fixed a memory overflow error when indexing 1000s of TXs
+-Added support for Altmarkets.io exchange
+-Added full address history support as opposed to only displaying top x records
+-Added ipv6 support
+-All api end-points now return text values with HTTP header content-type 'text/plain'
+-Removed defunct markets (ccex, coinexchange, cryptopia, cryptsy, empoex)
+-Replaced deprecated 'request' dependency with 'postman-request'
+-Added support for Crex24 exchange
+-Added partial Zcash/zk-SNARKs private tx support (90% complete)
+-Added support for customizing daemon api cmds
+-Fixed incorrect 'Wealth Distribution' total percent value
+-Added support for omitting 'burned coin' addresses from the rich list
+
+1.0.1 [June 7, 2019]
+-Added stex.com market support
+-Added a new public api /ext/getbasicstats
+-Fixed all depreciation warnings regarding mongo db.update statements
+-Updated outdated mongodb and mongoose references
+
+1.0.0 [May 27, 2019]
+-Initial release

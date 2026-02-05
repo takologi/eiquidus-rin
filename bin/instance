@@ -1,0 +1,27 @@
+#!/usr/bin/env node
+var debug = require('debug')('explorer');
+var settings = require('../lib/settings');
+var db = require('../lib/database');
+var app = require('../app');
+
+app.set('port', process.env.PORT || settings.webserver.port);
+
+db.connect(null, function() {
+  var server = app.listen(app.get('port'), '::', function() {
+    debug('Express server listening on port ' + server.address().port);
+  });
+
+  process.on('SIGINT', () => {
+    server.close(() => {
+      var mongoose = require('mongoose');
+
+      mongoose.connection.close(false).then(() => {
+        // close the main process now that all http and database connections have closed
+        process.exit(0);
+      }).catch((err) => {
+        console.log(err);
+        process.exit(1);
+      });
+    });
+  });
+});
