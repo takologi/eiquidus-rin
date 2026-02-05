@@ -26,11 +26,18 @@ console.log('=== Dashboard Initialization ===');
 console.log('This script will process historical blocks to populate the dashboard.');
 console.log('This may take a while depending on the blockchain size.\n');
 
+// Build connection string like database.js does
+const connectionString = 'mongodb://' + encodeURIComponent(settings.dbsettings.user) +
+  ':' + encodeURIComponent(settings.dbsettings.password) +
+  '@' + settings.dbsettings.address +
+  ':' + settings.dbsettings.port +
+  '/' + settings.dbsettings.database;
+
+console.log('Connecting to database...');
+
 // Connect to database
-mongoose.connect(settings.dbsettings.connectionString, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => {
+mongoose.set('strictQuery', true);
+mongoose.connect(connectionString).then(() => {
   console.log('Connected to database');
   
   // Get the current blockchain height
