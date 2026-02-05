@@ -1,0 +1,268 @@
+extends layout
+
+block content
+  if hasTimeSeries
+    script(src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js')
+  
+  .container-fluid
+    .row.mt-4
+      .col-12
+        h1.mb-4 #{settings.coin.name} Blockchain Dashboard
+    
+    .row.g-4
+      // Latest Block Info
+      .col-xl-3.col-lg-4.col-md-6
+        .card.h-100
+          .card-body
+            h5.card-title
+              i.fas.fa-cube.me-2
+              | Latest Block
+            hr
+            .mb-2
+              strong Height:
+              span.ms-2= data.latestBlockHeight
+            .mb-2
+              strong Hash:
+              .text-break.small.mt-1
+                a(href='/block/' + data.latestBlockHash)= data.latestBlockHash
+
+      // Difficulty
+      .col-xl-3.col-lg-4.col-md-6
+        .card.h-100
+          .card-body
+            h5.card-title
+              i.fas.fa-chart-line.me-2
+              | Difficulty
+            hr
+            p.h4.mb-0= data.difficulty.toFixed(8)
+
+      // Total Supply
+      .col-xl-3.col-lg-4.col-md-6
+        .card.h-100
+          .card-body
+            h5.card-title
+              i.fas.fa-coins.me-2
+              | Total Supply
+            hr
+            p.h4.mb-0= data.totalSupply.toLocaleString() + ' ' + settings.coin.symbol
+
+      // Total Transactions
+      .col-xl-3.col-lg-4.col-md-6
+        .card.h-100
+          .card-body
+            h5.card-title
+              i.fas.fa-exchange-alt.me-2
+              | Total Transactions
+            hr
+            p.h4.mb-0= data.totalTxCount.toLocaleString()
+
+    if hasTimeSeries && rolling
+      .row.g-4.mt-3
+        .col-12
+          .card
+            .card-body
+              h5.card-title
+                i.fas.fa-chart-area.me-2
+                | Rolling Averages
+              hr
+              .row
+                .col-md-4
+                  h6 Last 50 Blocks
+                  ul.list-unstyled
+                    li
+                      strong Block Interval: 
+                      = rolling.last50.blockInterval.toFixed(2) + ' s'
+                    li
+                      strong Avg Tx Count: 
+                      = rolling.last50.txCount.toFixed(2)
+                    li
+                      strong Avg Fees: 
+                      = rolling.last50.fees.toFixed(8)
+                .col-md-4
+                  h6 Last 500 Blocks
+                  ul.list-unstyled
+                    li
+                      strong Block Interval: 
+                      = rolling.last500.blockInterval.toFixed(2) + ' s'
+                    li
+                      strong Avg Tx Count: 
+                      = rolling.last500.txCount.toFixed(2)
+                    li
+                      strong Avg Fees: 
+                      = rolling.last500.fees.toFixed(8)
+                .col-md-4
+                  h6 Last 1500 Blocks
+                  ul.list-unstyled
+                    li
+                      strong Block Interval: 
+                      = rolling.last1500.blockInterval.toFixed(2) + ' s'
+                    li
+                      strong Avg Tx Count: 
+                      = rolling.last1500.txCount.toFixed(2)
+                    li
+                      strong Avg Fees: 
+                      = rolling.last1500.fees.toFixed(8)
+
+      if daily && daily.length > 0
+        .row.g-4.mt-3
+          .col-lg-6
+            .card
+              .card-body
+                h5.card-title Daily Transaction Count
+                canvas#txCountChart
+          .col-lg-6
+            .card
+              .card-body
+                h5.card-title Daily Average Block Time
+                canvas#blockTimeChart
+        
+        .row.g-4.mt-3
+          .col-lg-6
+            .card
+              .card-body
+                h5.card-title Daily Blocks
+                canvas#blocksChart
+          .col-lg-6
+            .card
+              .card-body
+                h5.card-title Daily Fees
+                canvas#feesChart
+
+        script.
+          document.addEventListener('DOMContentLoaded', function() {
+            const dailyData = !{JSON.stringify(daily)};
+            const labels = dailyData.map(d => d.date);
+            
+            // Transaction Count Chart
+            new Chart(document.getElementById('txCountChart'), {
+              type: 'line',
+              data: {
+                labels: labels,
+                datasets: [{
+                  label: 'Total Transactions',
+                  data: dailyData.map(d => d.tx_count_total),
+                  borderColor: 'rgb(75, 192, 192)',
+                  tension: 0.1
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: true
+              }
+            });
+            
+            // Block Time Chart
+            new Chart(document.getElementById('blockTimeChart'), {
+              type: 'line',
+              data: {
+                labels: labels,
+                datasets: [{
+                  label: 'Avg Block Time (seconds)',
+                  data: dailyData.map(d => d.avg_block_time),
+                  borderColor: 'rgb(255, 99, 132)',
+                  tension: 0.1
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: true
+              }
+            });
+            
+            // Blocks Chart
+            new Chart(document.getElementById('blocksChart'), {
+              type: 'bar',
+              data: {
+                labels: labels,
+                datasets: [{
+                  label: 'Blocks per Day',
+                  data: dailyData.map(d => d.blocks),
+                  backgroundColor: 'rgb(54, 162, 235)'
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: true
+              }
+            });
+            
+            // Fees Chart
+            new Chart(document.getElementById('feesChart'), {
+              type: 'line',
+              data: {
+                labels: labels,
+                datasets: [{
+                  label: 'Total Fees',
+                  data: dailyData.map(d => d.fees_total),
+                  borderColor: 'rgb(255, 205, 86)',
+                  tension: 0.1
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: true
+              }
+            });
+          });
+    else
+      .row.g-4.mt-1
+        // Block Interval
+        .col-xl-3.col-lg-4.col-md-6
+          .card.h-100
+            .card-body
+              h5.card-title
+                i.fas.fa-clock.me-2
+                | Block Interval
+              hr
+              p.h4.mb-0= data.blockInterval + ' seconds'
+              small.text-muted Average of last 10 blocks
+
+        // Recent Block Tx Count
+        .col-xl-3.col-lg-4.col-md-6
+          .card.h-100
+            .card-body
+              h5.card-title
+                i.fas.fa-list.me-2
+                | Recent Block Txs
+              hr
+              p.h4.mb-0= data.recentTxCount
+
+        // Average Tx Count
+        .col-xl-3.col-lg-4.col-md-6
+          .card.h-100
+            .card-body
+              h5.card-title
+                i.fas.fa-chart-bar.me-2
+                | Avg Tx Count
+              hr
+              p.h4.mb-0= data.avgTxCount.toFixed(2)
+              small.text-muted Average of last 10 blocks
+
+        // Network Hashrate
+        .col-xl-3.col-lg-4.col-md-6
+          .card.h-100
+            .card-body
+              h5.card-title
+                i.fas.fa-tachometer-alt.me-2
+                | Network Hashrate
+              hr
+              p.h4.mb-0
+                if data.networkHashrate > 0
+                  = data.networkHashrate.toFixed(2) + ' H/s'
+                else
+                  | N/A
+
+    .row.mt-4
+      .col-12
+        .card
+          .card-body
+            h5.card-title
+              i.fas.fa-info-circle.me-2
+              | About This Dashboard
+            hr
+            p This dashboard displays blockchain statistics for #{settings.coin.name}. Data is sourced directly from the blockchain database.
+            if !hasTimeSeries
+              p
+                strong Note: 
+                | Time-series charts and historical trends are not yet available. The dashboard aggregation service needs to be initialized.
+

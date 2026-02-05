@@ -391,6 +391,66 @@ router.get('/', function(req, res) {
   route_get_txlist(res, null);
 });
 
+router.get('/dashboard', function(req, res) {
+  // Try to get Phase 2 data (with time-series), fallback to Phase 1
+  const dashboardAggregation = require('../lib/dashboard_aggregation');
+  
+  dashboardAggregation.getDashboardData(function(dashboardData) {
+    if (dashboardData) {
+      res.render(
+        'dashboard',
+        {
+          active: 'dashboard',
+          data: dashboardData.current,
+          rolling: dashboardData.rolling,
+          daily: dashboardData.daily,
+          hasTimeSeries: true,
+          showSync: db.check_show_sync_message(),
+          customHash: get_custom_hash(),
+          styleHash: get_style_hash(),
+          themeHash: get_theme_hash(),
+          page_title_prefix: settings.coin.name + ' Dashboard'
+        }
+      );
+    } else {
+      // Fallback to Phase 1 simple data
+      db.get_dashboard_current_data(function(simpleData) {
+        if (simpleData) {
+          res.render(
+            'dashboard',
+            {
+              active: 'dashboard',
+              data: simpleData,
+              rolling: null,
+              daily: null,
+              hasTimeSeries: false,
+              showSync: db.check_show_sync_message(),
+              customHash: get_custom_hash(),
+              styleHash: get_style_hash(),
+              themeHash: get_theme_hash(),
+              page_title_prefix: settings.coin.name + ' Dashboard'
+            }
+          );
+        } else {
+          // Handle error case
+          res.render(
+            'error',
+            {
+              active: 'dashboard',
+              message: 'Unable to load dashboard data',
+              showSync: db.check_show_sync_message(),
+              customHash: get_custom_hash(),
+              styleHash: get_style_hash(),
+              themeHash: get_theme_hash(),
+              page_title_prefix: settings.coin.name + ' Dashboard Error'
+            }
+          );
+        }
+      });
+    }
+  });
+});
+
 router.get('/info', function(req, res) {
   let pluginApisExt = [];
 
