@@ -80,7 +80,7 @@ mongoose.connect(connectionString).then(() => {
 function processBlocks(startHeight, endHeight, callback) {
   let successCount = 0;
   let errorCount = 0;
-  const batchSize = 100; // Process 100 blocks at a time
+  const batchSize = 1000; // Process 1000 blocks at a time
   let currentBatch = startHeight;
 
   console.log(`Processing in batches of ${batchSize} blocks...`);
