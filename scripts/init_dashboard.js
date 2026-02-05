@@ -48,11 +48,12 @@ mongoose.connect(connectionString).then(() => {
     }
 
     const currentHeight = stats.last;
-    const start = startHeight || Math.max(1, currentHeight - 1500); // Default: last 1500 blocks
+    const start = startHeight || Math.max(1, currentHeight - 43200); // Default: last 30 days (43200 blocks at 60s/block)
     const end = endHeight || currentHeight;
 
     console.log(`Current blockchain height: ${currentHeight}`);
-    console.log(`Processing blocks from ${start} to ${end}\n`);
+    console.log(`Processing blocks from ${start} to ${end}`);
+    console.log(`This will process approximately ${((end - start) / 1440).toFixed(1)} days of data\n`);
 
     processBlocks(start, end, function(success) {
       if (success) {

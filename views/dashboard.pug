@@ -77,7 +77,7 @@ block content
                       = rolling.last50.txCount.toFixed(2)
                     li
                       strong Avg Fees: 
-                      = rolling.last50.fees.toFixed(8)
+                      = (rolling.last50.fees / 100000000).toFixed(8) + ' RIN'
                 .col-md-4
                   h6 Last 500 Blocks
                   ul.list-unstyled
@@ -89,7 +89,7 @@ block content
                       = rolling.last500.txCount.toFixed(2)
                     li
                       strong Avg Fees: 
-                      = rolling.last500.fees.toFixed(8)
+                      = (rolling.last500.fees / 100000000).toFixed(8) + ' RIN'
                 .col-md-4
                   h6 Last 1500 Blocks
                   ul.list-unstyled
@@ -101,7 +101,7 @@ block content
                       = rolling.last1500.txCount.toFixed(2)
                     li
                       strong Avg Fees: 
-                      = rolling.last1500.fees.toFixed(8)
+                      = (rolling.last1500.fees / 100000000).toFixed(8) + ' RIN'
 
       if daily && daily.length > 0
         .row.g-4.mt-3
@@ -192,8 +192,8 @@ block content
               data: {
                 labels: labels,
                 datasets: [{
-                  label: 'Total Fees',
-                  data: dailyData.map(d => d.fees_total),
+                  label: 'Total Fees (RIN)',
+                  data: dailyData.map(d => d.fees_total / 100000000),
                   borderColor: 'rgb(255, 205, 86)',
                   tension: 0.1
                 }]
