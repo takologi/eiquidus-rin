@@ -95,8 +95,8 @@ block content
             rowclass = 'table-danger';
           }
           var amountParts = amount.split('.');
-          $("td:eq(2)", row).html(updown + amountParts[0] + '.<span class="decimal">' + amountParts[1] + '</span>').addClass(rowclass + ' text-center');
-          $("td:eq(3)", row).html(balanceParts[0] + '.<span class="decimal">' + balanceParts[1] + '</span>').addClass('text-center');
+          $("td:eq(2)", row).html(updown + amountParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(amountParts[1]) + '</span>').addClass(rowclass + ' text-center');
+          $("td:eq(3)", row).html(balanceParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(balanceParts[1]) + '</span>').addClass('text-center');
           $("td:eq(4)", row).html('<span' + (#{settings.shared_pages.date_time.enable_alt_timezone_tooltips} == true ? ' data-bs-toggle="tooltip" data-bs-placement="auto" title="' + format_unixtime(timestamp, true) + '"' : '') + '>' + format_unixtime(timestamp) + '</span>').addClass('text-center');
         },
         fnDrawCallback: function(settings) {
@@ -125,6 +125,9 @@ block content
   - var sentParts = sent.split('.');
   - var received = Number(address.received / 100000000).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
   - var receivedParts = received.split('.');
+  - var balanceDecimal = balanceParts[1].replace(/(\d{3})/g, '$1 ').trim();
+  - var sentDecimal = sentParts[1].replace(/(\d{3})/g, '$1 ').trim();
+  - var receivedDecimal = receivedParts[1].replace(/(\d{3})/g, '$1 ').trim();
   - var theadClasses = [];
   if settings.shared_pages.table_header_bgcolor != null && settings.shared_pages.table_header_bgcolor != ''
     - theadClasses.push('table-' + settings.shared_pages.table_header_bgcolor);
@@ -178,13 +181,13 @@ block content
         tbody
           tr
             td.text-center.addr-summary #{balanceParts[0]}.
-              span.decimal #{balanceParts[1]}
+              span.decimal #{balanceDecimal}
             if settings.address_page.show_sent_received == true
               td.text-center.addr-summary #{sentParts[0]}.
-                span.decimal #{sentParts[1]}
+                span.decimal #{sentDecimal}
             if settings.address_page.show_sent_received == true
               td.text-center.addr-summary #{receivedParts[0]}.
-                span.decimal #{receivedParts[1]}
+                span.decimal #{receivedDecimal}
             td.text-center.addr-summary
               img.qrcode(src='/qr/' + address.a_id)
     .card.card-default.border-0.cardSpacer

@@ -122,6 +122,8 @@ block content
                       - var itemFixedParts = Number(itemFixed).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true}).split(".");
                       - var percent = Number((itemFixed / stats.supply) * 100).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':2,'useGrouping':false});
                       - var percentParts = percent.split(".");
+                      - var itemDecimal = itemFixedParts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      - var percentDecimal = percentParts[1].replace(/(\d{3})/g, '$1 ').trim();
                       tr
                         td.text-center
                           =count
@@ -132,9 +134,9 @@ block content
                             a.breakWord(href='/address/' + address.a_id) #{address.claim_name}
                           include ./includes/rl_labels.pug
                         td.text-center #{itemFixedParts[0]}.
-                          span.decimal #{itemFixedParts[1]}
+                          span.decimal #{itemDecimal}
                         td.text-center #{percentParts[0]}.
-                          span.decimal #{percentParts[1]}
+                          span.decimal #{percentDecimal}
           if settings.richlist_page.show_received_coins == true
             #received(class='container tab-pane' + (!settings.richlist_page.show_current_balance ? ' active' : ''), style='margin-top:0;')
               .card.card-default.border-0
@@ -152,6 +154,7 @@ block content
                       - count = count + 1;
                       - var itemFixed = Number(parseInt(address.received) / 100000000).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                       - var itemFixedParts = itemFixed.split(".");
+                      - var itemDecimal = itemFixedParts[1].replace(/(\d{3})/g, '$1 ').trim();
                       tr
                         td.text-center
                           =count
@@ -162,7 +165,7 @@ block content
                             a.breakWord(href='/address/' + address.a_id) #{address.claim_name}
                           include ./includes/rl_labels.pug
                         td.text-center #{itemFixedParts[0]}.
-                          span.decimal #{itemFixedParts[1]}
+                          span.decimal #{itemDecimal}
     if settings.richlist_page.wealth_distribution.show_distribution_table == true || settings.richlist_page.wealth_distribution.show_distribution_chart == true
       div(class=(settings.richlist_page.show_received_coins == true || settings.richlist_page.show_current_balance == true ? 'col-xs-12 col-lg-4' : 'col-12'))
         if settings.richlist_page.wealth_distribution.show_distribution_table == true
@@ -197,10 +200,12 @@ block content
                   - var totalParts = total.split(".");
                   - var percent = parseFloat(distb.percent).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':2,'useGrouping':false});
                   - var percentParts = percent.split(".");
+                  - var totalDecimal = totalParts[1].replace(/(\d{3})/g, '$1 ').trim();
+                  - var percentDecimal = percentParts[1].replace(/(\d{3})/g, '$1 ').trim();
                   td.text-center.breakWord #{totalParts[0]}.
-                    span.decimal.breakWord #{totalParts[1]}
+                    span.decimal.breakWord #{totalDecimal}
                   td.text-center #{percentParts[0]}.
-                    span.decimal #{percentParts[1]}
+                    span.decimal #{percentDecimal}
                 tr
                   td.fw-bold
                     div.float-start.wealth-dist-color-box(style=('background-color:' + settings.richlist_page.wealth_distribution.colors[2] + ';'))
@@ -209,10 +214,12 @@ block content
                   - var totalParts = total.split(".");
                   - var percent = parseFloat(distc.percent).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':2,'useGrouping':false});
                   - var percentParts = percent.split(".");
+                  - var totalDecimal = totalParts[1].replace(/(\d{3})/g, '$1 ').trim();
+                  - var percentDecimal = percentParts[1].replace(/(\d{3})/g, '$1 ').trim();
                   td.text-center.breakWord #{totalParts[0]}.
-                    span.decimal.breakWord #{totalParts[1]}
+                    span.decimal.breakWord #{totalDecimal}
                   td.text-center #{percentParts[0]}.
-                    span.decimal #{percentParts[1]}
+                    span.decimal #{percentDecimal}
                 tr
                   td.fw-bold
                     div.float-start.wealth-dist-color-box(style=('background-color:' + settings.richlist_page.wealth_distribution.colors[3] + ';'))
@@ -221,10 +228,12 @@ block content
                   - var totalParts = total.split(".");
                   - var percent = parseFloat(distd.percent).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':2,'useGrouping':false});
                   - var percentParts = percent.split(".");
+                  - var totalDecimal = totalParts[1].replace(/(\d{3})/g, '$1 ').trim();
+                  - var percentDecimal = percentParts[1].replace(/(\d{3})/g, '$1 ').trim();
                   td.text-center.breakWord #{totalParts[0]}.
-                    span.decimal.breakWord #{totalParts[1]}
+                    span.decimal.breakWord #{totalDecimal}
                   td.text-center #{percentParts[0]}.
-                    span.decimal #{percentParts[1]}
+                    span.decimal #{percentDecimal}
                 tr.text-end
                   td.fw-bold
                     span #{settings.localization.total_top_100}
@@ -244,10 +253,12 @@ block content
                   - var totalParts = total.split(".");
                   - var percent = parseFloat(diste.percent).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':2,'useGrouping':false});
                   - var percentParts = percent.split(".");
+                  - var totalDecimal = totalParts[1].replace(/(\d{3})/g, '$1 ').trim();
+                  - var percentDecimal = percentParts[1].replace(/(\d{3})/g, '$1 ').trim();
                   td.text-center.breakWord #{totalParts[0]}.
-                    span.decimal.breakWord #{totalParts[1]}
+                    span.decimal.breakWord #{totalDecimal}
                   td.text-center #{percentParts[0]}.
-                    span.decimal #{percentParts[1]}
+                    span.decimal #{percentDecimal}
                 if settings.richlist_page.burned_coins.include_burned_coins_in_distribution == true && burned != null && burned > 0
                   tr
                     td.fw-bold
@@ -257,10 +268,12 @@ block content
                     - var totalParts = total.split(".");
                     - var percent = parseFloat(((burned / 100000000) / stats.supply) * 100).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':2,'useGrouping':false});
                     - var percentParts = percent.split(".");
+                    - var totalDecimal = totalParts[1].replace(/(\d{3})/g, '$1 ').trim();
+                    - var percentDecimal = percentParts[1].replace(/(\d{3})/g, '$1 ').trim();
                     td.text-center.breakWord #{totalParts[0]}.
-                      span.decimal.breakWord #{totalParts[1]}
+                      span.decimal.breakWord #{totalDecimal}
                     td.text-center #{percentParts[0]}.
-                      span.decimal #{percentParts[1]}
+                      span.decimal #{percentDecimal}
                 tr.text-end
                   td.fw-bold
                     span #{settings.localization.total}
@@ -268,10 +281,12 @@ block content
                   - var totalParts = total.split(".");
                   - var percent = (parseFloat(dista.percent) + parseFloat(distb.percent) + parseFloat(distc.percent) + parseFloat(distd.percent) + parseFloat(diste.percent) + parseFloat((settings.richlist_page.burned_coins.include_burned_coins_in_distribution == true && burned != null && burned > 0 ? ((burned / 100000000) / stats.supply) * 100 : 0))).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':2,'useGrouping':false});
                   - var percentParts = percent.split(".");
+                  - var totalDecimal = totalParts[1].replace(/(\d{3})/g, '$1 ').trim();
+                  - var percentDecimal = percentParts[1].replace(/(\d{3})/g, '$1 ').trim();
                   td.text-center.fw-bold.breakWord #{totalParts[0]}.
-                    span.decimal.breakWord #{totalParts[1]}
+                    span.decimal.breakWord #{totalDecimal}
                   td.fw-bold.text-center #{percentParts[0]}.
-                    span.decimal #{percentParts[1]}
+                    span.decimal #{percentDecimal}
                 if settings.richlist_page.wealth_distribution.show_address_count == true
                   tr.text-end
                     td.fw-bold

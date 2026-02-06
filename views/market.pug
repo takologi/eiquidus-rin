@@ -331,43 +331,51 @@ block content
                       if marketdata.data.summary.high != null
                         - var highValue = Number(marketdata.data.summary.high).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                         - var splitHigh = highValue.split(".");
+                        - var highDecimal = splitHigh[1].replace(/(\d{3})/g, '$1 ').trim();
                         td.text-center #{splitHigh[0]}.
-                          span.decimal #{splitHigh[1]}
+                          span.decimal #{highDecimal}
                       if marketdata.data.summary.low != null
                         - var lowValue = Number(marketdata.data.summary.low).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                         - var splitLow = lowValue.split(".");
+                        - var lowDecimal = splitLow[1].replace(/(\d{3})/g, '$1 ').trim();
                         td.text-center #{splitLow[0]}.
-                          span.decimal #{splitLow[1]}
+                          span.decimal #{lowDecimal}
                       if marketdata.data.summary.volume != null
                         - var volumeValue = Number(marketdata.data.summary.volume).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                         - var splitVolume = volumeValue.split(".");
+                        - var volumeDecimal = splitVolume[1].replace(/(\d{3})/g, '$1 ').trim();
                         td.text-center #{splitVolume[0]}.
-                          span.decimal #{splitVolume[1]}
+                          span.decimal #{volumeDecimal}
                       if marketdata.data.summary.volume_btc != null
                         - var volumeBTCValue = Number(marketdata.data.summary.volume_btc).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                         - var splitVolumeBTC = volumeBTCValue.split(".");
+                        - var volumeBTCDecimal = splitVolumeBTC[1].replace(/(\d{3})/g, '$1 ').trim();
                         td.text-center #{splitVolumeBTC[0]}.
-                          span.decimal #{splitVolumeBTC[1]}
+                          span.decimal #{volumeBTCDecimal}
                       if marketdata.data.summary.bid != null
                         - var bidValue = Number(marketdata.data.summary.bid).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                         - var splitBid = bidValue.split(".");
+                        - var bidDecimal = splitBid[1].replace(/(\d{3})/g, '$1 ').trim();
                         td.text-center #{splitBid[0]}.
-                          span.decimal #{splitBid[1]}
+                          span.decimal #{bidDecimal}
                       if marketdata.data.summary.ask != null
                         - var askValue = Number(marketdata.data.summary.ask).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                         - var splitAsk = askValue.split(".");
+                        - var askDecimal = splitAsk[1].replace(/(\d{3})/g, '$1 ').trim();
                         td.text-center #{splitAsk[0]}.
-                          span.decimal #{splitAsk[1]}
+                          span.decimal #{askDecimal}
                       if marketdata.data.summary.last != null
                         - var lastValue = Number(marketdata.data.summary.last).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                         - var splitLast = lastValue.split(".");
+                        - var lastDecimal = splitLast[1].replace(/(\d{3})/g, '$1 ').trim();
                         td.text-center #{splitLast[0]}.
-                          span.decimal #{splitLast[1]}
+                          span.decimal #{lastDecimal}
                       if marketdata.data.summary.prev != null
                         - var prevValue = Number(marketdata.data.summary.prev).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                         - var splitPrev = prevValue.split(".");
+                        - var prevDecimal = splitPrev[1].replace(/(\d{3})/g, '$1 ').trim();
                         td.text-center #{splitPrev[0]}.
-                          span.decimal #{splitPrev[1]}
+                          span.decimal #{prevDecimal}
                       if marketdata.data.summary.change != null || (marketdata.data.summary.last != null && marketdata.data.summary.prev != null)
                         if marketdata.data.summary.change != null
                           if marketdata.data.summary.change == '' || marketdata.data.summary.change == '-'
@@ -379,17 +387,18 @@ block content
                         else
                           - var price_change = Number(0).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':2,'useGrouping':true});
                         - var splitChange = price_change.split(".");
+                        - var changeDecimal = splitChange[1].replace(/(\d{3})/g, '$1 ').trim();
                         if price_change > 0
                           td.text-center.text-success.fw-bold +#{splitChange[0]}.
-                            span.decimal #{splitChange[1]}
+                            span.decimal #{changeDecimal}
                             span  %
                         else if price_change < 0
                           td.text-center.text-danger.fw-bold #{splitChange[0]}.
-                            span.decimal #{splitChange[1]}
+                            span.decimal #{changeDecimal}
                             span  %
                         else
                           td.text-center.fw-bold #{splitChange[0]}.
-                            span.decimal #{splitChange[1]}
+                            span.decimal #{changeDecimal}
                             span  %
                     else
                       td.text-center -
@@ -432,20 +441,23 @@ block content
                     each buy in marketdata.data.buys
                       - var price = Number(buy.price).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                       - var splitPrice = price.split(".");
+                      - var priceDecimal = splitPrice[1].replace(/(\d{3})/g, '$1 ').trim();
                       - var quantity = Number(buy.quantity).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                       - var splitQuantity = quantity.split(".");
+                      - var quantityDecimal = splitQuantity[1].replace(/(\d{3})/g, '$1 ').trim();
                       if buy.total != null
                         - var total = Number(buy.total).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                       else
                         - var total = Number(parseFloat(buy.price).toFixed(8) * parseFloat(buy.quantity).toFixed(8)).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                       - var splitTotal = total.split(".");
+                      - var totalDecimal = splitTotal[1].replace(/(\d{3})/g, '$1 ').trim();
                       tr
                         td.text-center.text-success.fw-bold #{splitPrice[0]}.
-                          span.decimal #{splitPrice[1]}
+                          span.decimal #{priceDecimal}
                         td.text-center #{splitQuantity[0]}.
-                          span.decimal #{splitQuantity[1]}
+                          span.decimal #{quantityDecimal}
                         td.text-center #{splitTotal[0]}.
-                          span.decimal #{splitTotal[1]}
+                          span.decimal #{totalDecimal}
           .col-md-6.col-xs-12.cardSpacer
             .card.card-default.border-0.wrapper-border-0(class=theadClasses)
               .card-header(style='border-bottom-width:1px;')
@@ -466,20 +478,23 @@ block content
                     each sell in marketdata.data.sells
                       - var price = Number(sell.price).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                       - var splitPrice = price.split(".");
+                      - var priceDecimal = splitPrice[1].replace(/(\d{3})/g, '$1 ').trim();
                       - var quantity = Number(sell.quantity).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                       - var splitQuantity = quantity.split(".");
+                      - var quantityDecimal = splitQuantity[1].replace(/(\d{3})/g, '$1 ').trim();
                       if sell.total != null
                         - var total = Number(sell.total).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                       else
                         - var total = Number(parseFloat(sell.price).toFixed(8) * parseFloat(sell.quantity).toFixed(8)).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                       - var splitTotal = total.split(".");
+                      - var totalDecimal = splitTotal[1].replace(/(\d{3})/g, '$1 ').trim();
                       tr
                         td.text-center.text-danger.fw-bold #{splitPrice[0]}.
-                          span.decimal #{splitPrice[1]}                  
+                          span.decimal #{priceDecimal}                  
                         td.text-center #{splitQuantity[0]}.
-                          span.decimal #{splitQuantity[1]}
+                          span.decimal #{quantityDecimal}
                         td.text-center #{splitTotal[0]}.
-                          span.decimal #{splitTotal[1]}
+                          span.decimal #{totalDecimal}
         .row
           .col-md-12
             .card.card-default.border-0
@@ -503,31 +518,34 @@ block content
                       if order.ordertype != null
                         - var price = Number(order.price).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                         - var splitPrice = price.split(".");
+                        - var priceDecimal = splitPrice[1].replace(/(\d{3})/g, '$1 ').trim();
                         - var quantity = Number(order.quantity).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                         - var splitQuantity = quantity.split(".");
+                        - var quantityDecimal = splitQuantity[1].replace(/(\d{3})/g, '$1 ').trim();
                         if order.total != null
                           - var total = Number(order.total).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                         else
                           - var total = Number(parseFloat(order.price).toFixed(8) * parseFloat(order.quantity).toFixed(8)).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                         - var splitTotal = total.split(".");
+                        - var totalDecimal = splitTotal[1].replace(/(\d{3})/g, '$1 ').trim();
                         if order.ordertype.toUpperCase() == 'BUY'
                           tr
                             td.text-center.text-success.fw-bold #{splitPrice[0]}.
-                              span.decimal #{splitPrice[1]}   
+                              span.decimal #{priceDecimal}   
                             td.text-center #{splitQuantity[0]}.
-                              span.decimal #{splitQuantity[1]}
+                              span.decimal #{quantityDecimal}
                             td.text-center #{splitTotal[0]}.
-                              span.decimal #{splitTotal[1]}
+                              span.decimal #{totalDecimal}
                             td.text-center
                               span.timestampCol=order.timestamp
                         else
                           tr
                             td.text-center.text-danger.fw-bold #{splitPrice[0]}.
-                              span.decimal #{splitPrice[1]}
+                              span.decimal #{priceDecimal}
                             td.text-center #{splitQuantity[0]}.
-                              span.decimal #{splitQuantity[1]}
+                              span.decimal #{quantityDecimal}
                             td.text-center #{splitTotal[0]}.
-                              span.decimal #{splitTotal[1]}
+                              span.decimal #{totalDecimal}
                             td.text-center
                               span.timestampCol=order.timestamp
     else

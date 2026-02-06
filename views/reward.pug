@@ -85,19 +85,23 @@ block content
             - var splitReward = rewardValue.split('.');
             - var nextValue = Number(heavy.estnext).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
             - var splitNext = nextValue.split('.');
+            - var supplyDecimal = splitSupply[1].replace(/(\d{3})/g, '$1 ').trim();
+            - var capDecimal = splitCap[1].replace(/(\d{3})/g, '$1 ').trim();
+            - var rewardDecimal = splitReward[1].replace(/(\d{3})/g, '$1 ').trim();
+            - var nextDecimal = splitNext[1].replace(/(\d{3})/g, '$1 ').trim();
             tr
               td.text-center #{splitSupply[0]}.
-                span.decimal #{splitSupply[1]}
+                span.decimal #{supplyDecimal}
               td.text-center #{splitCap[0]}.
-                span.decimal #{splitCap[1]}
+                span.decimal #{capDecimal}
               td.text-center
                 =heavy.phase
               td.text-center
                 =heavy.maxvote
               td.text-center #{splitReward[0]}.
-                span.decimal #{splitReward[1]}
+                span.decimal #{rewardDecimal}
               td.text-center #{splitNext[0]}.
-                span.decimal #{splitNext[1]}
+                span.decimal #{nextDecimal}
   .row(style='margin-left:0;margin-right:0;')
     .col-md-3
       .card.card-default.border-0

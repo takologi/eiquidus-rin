@@ -107,6 +107,7 @@ block content
                     else
                       - var ramount = Number(address.amount / 100000000).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                       - var ramountParts = ramount.split('.');
+                      - var ramountDecimal = ramountParts[1].replace(/(\d{3})/g, '$1 ').trim();
                       tr
                         td
                           if address.addresses != 'hidden_address' && address.addresses != 'unknown_address'
@@ -129,7 +130,7 @@ block content
                             else
                               =settings.localization.unknown_sender
                         td.table-danger.text-center #{ramountParts[0]}.
-                          span.decimal #{ramountParts[1]}
+                          span.decimal #{ramountDecimal}
                 else
                   tr.table-info.text-center
                     td.bottom-border-1 #{settings.localization.proof_of_stake}
@@ -148,6 +149,7 @@ block content
                   if tx.vout.length > 0
                     - var ramount = Number(address.amount / 100000000).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                     - var ramountParts = ramount.split('.');
+                    - var ramountDecimal = ramountParts[1].replace(/(\d{3})/g, '$1 ').trim();
                     tr
                       if address.addresses != 'hidden_address' && address.addresses != 'unknown_address'
                         td
@@ -158,7 +160,7 @@ block content
                               =address.claim_name
                           include ./includes/rl_labels.pug
                         td.table-success.text-center #{ramountParts[0]}.
-                          span.decimal #{ramountParts[1]}
+                          span.decimal #{ramountDecimal}
                       else if address.amount > 0
                         td
                           if address.addresses == 'hidden_address'
@@ -174,7 +176,7 @@ block content
                             else
                               =settings.localization.unknown_recipient
                         td.table-success.text-center #{ramountParts[0]}.
-                          span.decimal #{ramountParts[1]}
+                          span.decimal #{ramountDecimal}
                       else
                         td(colspan='2')
                           if address.addresses == 'hidden_address'
@@ -192,6 +194,7 @@ block content
                   else
                     - var ramount = Number(address.amount / 100000000).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
                     - var ramountParts = ramount.split('.');
+                    - var ramountDecimal = ramountParts[1].replace(/(\d{3})/g, '$1 ').trim();
                     tr
                       td
                         a.breakWord(href='/address/' + address.addresses)
@@ -201,4 +204,4 @@ block content
                             =address.claim_name
                         include ./includes/rl_labels.pug
                       td.table-success.text-center #{ramountParts[0]}.
-                        span.decimal #{ramountParts[1]}
+                        span.decimal #{ramountDecimal}
