@@ -59,6 +59,17 @@ if (cluster.isMaster) {
     waitForWorkerShutdown(false);
   });
 
+  // handle graceful reload on SIGHUP
+  process.on('SIGHUP', () => {
+    console.log('Cluster reloading (SIGHUP received)..');
+
+    // send kill cmd to all workers for restart
+    killAllWorkers(true);
+
+    // wait for workers to stop and restart
+    waitForWorkerShutdown(true);
+  });
+
   startWorkers();
 
   // listen for dying workers
