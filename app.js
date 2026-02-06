@@ -1044,17 +1044,29 @@ if (settings.markets_page.enabled == true) {
     }
   });
 
-  // sort market data by market name
+  // sort market data by priority (lower numbers first), then by name as fallback
   market_data.sort(function(a, b) {
-    var name1 = a.name.toLowerCase();
-    var name2 = b.name.toLowerCase();
+    // get priority values, default to 999 if not specified
+    var priority1 = (settings.markets_page.exchanges[a.id] && settings.markets_page.exchanges[a.id].priority != null) ? settings.markets_page.exchanges[a.id].priority : 999;
+    var priority2 = (settings.markets_page.exchanges[b.id] && settings.markets_page.exchanges[b.id].priority != null) ? settings.markets_page.exchanges[b.id].priority : 999;
 
-    if (name1 < name2)
+    // first sort by priority
+    if (priority1 < priority2)
       return -1;
-    else if (name1 > name2)
+    else if (priority1 > priority2)
       return 1;
-    else
-      return 0;
+    else {
+      // if priorities are equal, sort alphabetically by name
+      var name1 = a.name.toLowerCase();
+      var name2 = b.name.toLowerCase();
+
+      if (name1 < name2)
+        return -1;
+      else if (name1 > name2)
+        return 1;
+      else
+        return 0;
+    }
   });
 
   // fix default exchange name case
@@ -1140,6 +1152,7 @@ app.set('masternodes_page', settings.masternodes_page);
 app.set('movement_page', settings.movement_page);
 app.set('network_page', settings.network_page);
 app.set('richlist_page', settings.richlist_page);
+app.set('blockchain_dashboard', settings.blockchain_dashboard);
 app.set('markets_page', settings.markets_page);
 app.set('api_page', settings.api_page);
 app.set('claim_address_page', settings.claim_address_page);
