@@ -12,6 +12,9 @@ pnpm-debug.log*
 .env.local
 .env.*.local
 
+# Local settings
+settings.json
+
 # OS files
 .DS_Store
 .DS_Store?
