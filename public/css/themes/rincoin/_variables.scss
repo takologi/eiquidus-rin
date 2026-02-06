@@ -11,28 +11,28 @@ $theme: "darkly" !default;
 
 $white:    #fff !default;
 $gray-100: #f8f9fa !default;
-$gray-200: #ebebeb !default;
-$gray-300: #dee2e6 !default;
-$gray-400: #ced4da !default;
-$gray-500: #adb5bd !default;
-$gray-600: #888 !default;
-$gray-700: #444 !default;
-$gray-800: #303030 !default;
-$gray-900: #222 !default;
+$gray-200: #2a2a2a !default;
+$gray-300: #333333 !default;
+$gray-400: #444444 !default;
+$gray-500: #555555 !default;
+$gray-600: #666666 !default;
+$gray-700: #1a1a1a !default;
+$gray-800: #151515 !default;
+$gray-900: #0a0a0a !default;
 $black:    #000 !default;
 
-$blue:    #375a7f !default;
+$blue:    #00d4ff !default;
 $indigo:  #6610f2 !default;
 $purple:  #6f42c1 !default;
 $pink:    #e83e8c !default;
-$red:     #e74c3c !default;
+$red:     #ff4444 !default;
 $orange:  #fd7e14 !default;
 $yellow:  #f39c12 !default;
-$green:   #00bc8c !default;
-$teal:    #20c997 !default;
-$cyan:    #3498db !default;
+$green:   #00ff88 !default;
+$teal:    #00d4ff !default;
+$cyan:    #00d4ff !default;
 
-$primary:       $blue !default;
+$primary:       $cyan !default;
 $secondary:     $gray-700 !default;
 $success:       $green !default;
 $info:          $cyan !default;
@@ -45,12 +45,12 @@ $min-contrast-ratio:   1.9 !default;
 
 // Body
 
-$body-bg:                   $gray-900 !default;
+$body-bg:                   $black !default;
 $body-color:                $white !default;
 
 // Links
 
-$link-color:                $success !default;
+$link-color:                $cyan !default;
 
 // Fonts
 
@@ -63,8 +63,9 @@ $text-muted:                  $gray-600 !default;
 
 // Tables
 
-$table-border-color:          $gray-700 !default;
-
+$table-border-color:          $gray-400 !default;
+$table-cell-padding-y:        .875rem !default;
+$table-cell-padding-x:        1rem !default;
 $table-bg-scale:              0 !default;
 
 // Forms
@@ -125,8 +126,8 @@ $pagination-disabled-border-color:  transparent !default;
 
 // Cards
 
-$card-cap-bg:                       $gray-700 !default;
-$card-bg:                           $gray-800 !default;
+$card-cap-bg:                       #1a1a1a !default;
+$card-bg:                           $gray-900 !default;
 
 // Popovers
 
@@ -150,12 +151,12 @@ $progress-bg:                       $gray-700 !default;
 
 // List group
 
-$list-group-color:                  $body-color !default;
-$list-group-bg:                     $gray-800 !default;
-$list-group-border-color:           $gray-700 !default;
-$list-group-hover-bg:               $gray-700 !default;
-$list-group-action-hover-color:     $list-group-color !default;
-$list-group-action-active-bg:       $gray-900 !default;
+$list-group-color:                  $white !default;
+$list-group-bg:                     $gray-900 !default;
+$list-group-border-color:           $gray-400 !default;
+$list-group-hover-bg:               $gray-800 !default;
+$list-group-action-hover-color:     $cyan !default;
+$list-group-action-active-bg:       $gray-700 !default;
 
 // Breadcrumbs
 

@@ -65,9 +65,9 @@ block content
           const blockhash = data[1];
           const txhash = data[2];
           const outputs = data[3];
-          const amount = Number(data[4]).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
-          const amountParts = amount.split('.');
-          const updatedAmount = amountParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(amountParts[1]) + '</span>';
+          var amountParts = Number(data[4]).toLocaleString('en',{'minimumIntegerDigits':6, 'minimumFractionDigits':8,'maximumFractionDigits':8,'useGrouping':true}).split('.');
+          amountParts[0] = amountParts[0].replace(/^[0,]+/, match => '&nbsp;'.repeat(match.length));
+          const updatedAmount = amountParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(amountParts[1]) + '&nbsp;</span>';
           const timestamp = data[5];
           let offset = 0;
 

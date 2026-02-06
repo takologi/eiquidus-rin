@@ -16,6 +16,7 @@
 @use './themes/morph/variables' as morph;
 @use './themes/pulse/variables' as pulse;
 @use './themes/quartz/variables' as quartz;
+@use './themes/rincoin/variables' as rincoin;
 @use './themes/sandstone/variables' as sandstone;
 @use './themes/simplex/variables' as simplex;
 @use './themes/sketchy/variables' as sketchy;
@@ -61,6 +62,8 @@ $theme-name: string.to-lower-case(theme-selector.$theme-name);
     border-color: pulse.$gray-300 if($important == 0, null, !important);
   } @else if $theme-name == "quartz" {
     border-color: quartz.$gray-300 if($important == 0, null, !important);
+  } @else if $theme-name == "rincoin" {
+    border-color: #444444;
   } @else if $theme-name == "sandstone" {
     border-color: sandstone.$gray-300 if($important == 0, null, !important);
   } @else if $theme-name == "simplex" {
@@ -119,6 +122,8 @@ $theme-name: string.to-lower-case(theme-selector.$theme-name);
     border-color: #2e2c35;  /* Hardcoded value not present in _variables.scss */
   } @else if $theme-name == "quartz" {
     border-color: #373b3e;  /* Hardcoded value not present in _variables.scss */
+  } @else if $theme-name == "rincoin" {
+    border-color: #444444;
   } @else if $theme-name == "sandstone" {
     border-color: #51524e;  /* Hardcoded value not present in _variables.scss */
   } @else if $theme-name == "simplex" {
@@ -177,6 +182,8 @@ $theme-name: string.to-lower-case(theme-selector.$theme-name);
     border-color: #e0dfe3;  /* Hardcoded value not present in _variables.scss */
   } @else if $theme-name == "quartz" {
     border-color: #d2d2d1;  /* Hardcoded value not present in _variables.scss */
+  } @else if $theme-name == "rincoin" {
+    border-color: #444444;
   } @else if $theme-name == "sandstone" {
     border-color: #dfddd8;  /* Hardcoded value not present in _variables.scss */
   } @else if $theme-name == "simplex" {
@@ -250,6 +257,8 @@ $theme-name: string.to-lower-case(theme-selector.$theme-name);
   } @else if $theme-name == "quartz" {
     color: quartz.$white;
     background-color: quartz.$gray-900;
+  } @else if $theme-name == "rincoin" {
+    border-color: #444444;
   } @else if $theme-name == "sandstone" {
     color: sandstone.$white;
     background-color: sandstone.$gray-800;
@@ -337,6 +346,8 @@ $theme-name: string.to-lower-case(theme-selector.$theme-name);
   } @else if $theme-name == "quartz" {
     color: quartz.$black;
     background-color: quartz.$gray-200;
+  } @else if $theme-name == "rincoin" {
+    border-color: #444444;
   } @else if $theme-name == "sandstone" {
     color: sandstone.$black;
     background-color: sandstone.$gray-200;
@@ -409,6 +420,8 @@ $theme-name: string.to-lower-case(theme-selector.$theme-name);
     color: rgba(255, 255, 255, 0.55);  /* Hardcoded value not present in _variables.scss */
   } @else if $theme-name == "quartz" {
     color: rgba(255, 255, 255, 0.8);  /* Hardcoded value not present in _variables.scss */
+  } @else if $theme-name == "rincoin" {
+    border-color: #444444;
   } @else if $theme-name == "sandstone" {
     color: rgba(255, 255, 255, 0.55);  /* Hardcoded value not present in _variables.scss */
   } @else if $theme-name == "simplex" {
@@ -467,6 +480,8 @@ $theme-name: string.to-lower-case(theme-selector.$theme-name);
     color: rgba(0, 0, 0, 0.4);  /* Hardcoded value not present in _variables.scss */
   } @else if $theme-name == "quartz" {
     color: rgba(52, 58, 64, 0.8);  /* Hardcoded value not present in _variables.scss */
+  } @else if $theme-name == "rincoin" {
+    border-color: #444444;
   } @else if $theme-name == "sandstone" {
     color: rgba(0, 0, 0, 0.55);  /* Hardcoded value not present in _variables.scss */
   } @else if $theme-name == "simplex" {
@@ -525,6 +540,8 @@ $theme-name: string.to-lower-case(theme-selector.$theme-name);
     color: rgba(255, 255, 255, 0.55);  /* Hardcoded value not present in _variables.scss */
   } @else if $theme-name == "quartz" {
     color: rgba(255, 255, 255, 0.8);  /* Hardcoded value not present in _variables.scss */
+  } @else if $theme-name == "rincoin" {
+    border-color: #444444;
   } @else if $theme-name == "sandstone" {
     color: rgba(255, 255, 255, 0.55);  /* Hardcoded value not present in _variables.scss */
   } @else if $theme-name == "simplex" {
@@ -583,6 +600,8 @@ $theme-name: string.to-lower-case(theme-selector.$theme-name);
     color: rgba(0, 0, 0, 0.4);  /* Hardcoded value not present in _variables.scss */
   } @else if $theme-name == "quartz" {
     color: rgba(52, 58, 64, 0.8);  /* Hardcoded value not present in _variables.scss */
+  } @else if $theme-name == "rincoin" {
+    border-color: #444444;
   } @else if $theme-name == "sandstone" {
     color: rgba(0, 0, 0, 0.55);  /* Hardcoded value not present in _variables.scss */
   } @else if $theme-name == "simplex" {
@@ -641,6 +660,8 @@ $theme-name: string.to-lower-case(theme-selector.$theme-name);
     color: rgba(255, 255, 255, 0.9);  /* Hardcoded value not present in _variables.scss */
   } @else if $theme-name == "quartz" {
     color: quartz.$white;
+  } @else if $theme-name == "rincoin" {
+    border-color: #444444;
   } @else if $theme-name == "sandstone" {
     color: sandstone.$white;
   } @else if $theme-name == "simplex" {
@@ -700,6 +721,8 @@ $theme-name: string.to-lower-case(theme-selector.$theme-name);
     color: rgba(0, 0, 0, 0.7);  /* Hardcoded value not present in _variables.scss */
   } @else if $theme-name == "quartz" {
     color: quartz.$gray-800;
+  } @else if $theme-name == "rincoin" {
+    border-color: #444444;
   } @else if $theme-name == "sandstone" {
     color: sandstone.$black;
   } @else if $theme-name == "simplex" {
@@ -759,6 +782,8 @@ $theme-name: string.to-lower-case(theme-selector.$theme-name);
     background: pulse.$primary;
   } @else if $theme-name == "quartz" {
     background: quartz.$primary;
+  } @else if $theme-name == "rincoin" {
+    background: rincoin.$primary;
   } @else if $theme-name == "sandstone" {
     background: sandstone.$primary;
   } @else if $theme-name == "simplex" {
@@ -1211,7 +1236,7 @@ tr {
 }
 
 .decimal {
-  font-size: 0.7em;
+  font-size: 80%;
 }
 
 .cardSpacer {

@@ -74,3 +74,78 @@ $web-font-path: "https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0
     }
   }
 }
+
+// Silver-metallic navbar and footer styling
+.navbar, .bg-primary, .bg-dark {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 50%, #2a2a2a 100%) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.3);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 2px 8px rgba(0, 0, 0, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+// List group items (sidebar icons) with better contrast
+.list-group-item {
+  background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 50%, #1a1a1a 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #cccccc !important;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 50%, #2a2a2a 100%) !important;
+    color: #00d4ff !important;
+    border-color: rgba(0, 212, 255, 0.3) !important;
+    box-shadow: 
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 2px 4px rgba(0, 212, 255, 0.2);
+  }
+  
+  &.active {
+    background: linear-gradient(135deg, #00d4ff 0%, #00a8cc 100%) !important;
+    color: #000000 !important;
+    font-weight: 600;
+    border-color: rgba(0, 212, 255, 0.5) !important;
+    box-shadow: 
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      0 3px 8px rgba(0, 212, 255, 0.4);
+  }
+  
+  i, .icon {
+    filter: brightness(1.3) contrast(1.2);
+  }
+}
+
+// Enhanced table styling for better visibility
+.table {
+  font-size: 1.0625rem;
+  
+  thead th {
+    background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+    color: #ffffff;
+    font-weight: 600;
+    border-bottom: 2px solid #00d4ff !important;
+    padding: 1rem;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    letter-spacing: 0.5px;
+  }
+  
+  tbody tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    
+    &:hover {
+      background-color: rgba(0, 212, 255, 0.05) !important;
+    }
+  }
+  
+  td {
+    color: #e0e0e0;
+    padding: 0.875rem 1rem;
+  }
+  
+  &-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(255, 255, 255, 0.02);
+  }
+}
