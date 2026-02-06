@@ -666,36 +666,46 @@ function check_show_sync_message(blocks_to_sync) {
 function get_market_price(market_array) {
   // check how the market price should be updated
   if (settings.markets_page.market_price == 'COINPAPRIKA') {
-    // check if the coingecko_id was found
-    const coinpaprika = require('../lib/apis/coinpaprika');
-    const currency = lib.get_market_currency_code();
-    console.log(`${settings.localization.calculating_market_price}.. ${settings.localization.please_wait}..`);
-    // get the market price from coingecko api
-    coinpaprika.get_market_prices(currency, function (err, last_price, last_usd_price) {
-      // check for errors
-      if (err == null) {
-        // get current stats
-        Stats.findOne({coin: settings.coin.name}).then((stats) => {
-          // update market stat prices
-          Stats.updateOne({coin: settings.coin.name}, {
-            last_price: (last_price == null ? 0 : last_price),
-            last_usd_price: (last_usd_price == null ? 0 : last_usd_price)
-          }).then(() => {
-            // market prices updated successfully
-            finish_market_sync();
-          }).catch((err) => {
-            // error saving stats
-            console.log(err);
+    // find the coinpaprika id
+    find_coinpaprika_id(settings.coin.symbol, function(coinpaprika_id) {
+      // check if the coinpaprika_id was found
+      if (coinpaprika_id != null && coinpaprika_id != '') {
+        const coinpaprika = require('../lib/apis/coinpaprika');
+        const currency = lib.get_market_currency_code();
+
+        console.log(`${settings.localization.calculating_market_price}.. ${settings.localization.please_wait}..`);
+
+        // get the market price from coinpaprika api
+        coinpaprika.get_market_prices(coinpaprika_id, currency, function (err, last_price, last_usd_price) {
+          // check for errors
+          if (err == null) {
+            // get current stats
+            Stats.findOne({coin: settings.coin.name}).then((stats) => {
+              // update market stat prices
+              Stats.updateOne({coin: settings.coin.name}, {
+                last_price: (last_price == null ? 0 : last_price),
+                last_usd_price: (last_usd_price == null ? 0 : last_usd_price)
+              }).then(() => {
+                // market prices updated successfully
+                finish_market_sync();
+              }).catch((err) => {
+                // error saving stats
+                console.log(err);
+                exit(1);
+              });
+            }).catch((err) => {
+              // error getting stats
+              console.log(err);
+              exit(1);
+            });
+          } else {
+            // coinpaprika api returned an error
+            console.log(`${settings.localization.ex_error}: ${err}`);
             exit(1);
-          });
-        }).catch((err) => {
-          // error getting stats
-          console.log(err);
-          exit(1);
+          }
         });
       } else {
-        // coinpaprika api returned an error
-        console.log(`${settings.localization.ex_error}: ${err}`);
+        // coinpaprika_id is not set which should have already thrown an error, so just exit
         exit(1);
       }
     });
@@ -895,6 +905,84 @@ function find_coingecko_id(symbol, cb) {
       }
     } else {
       // failed to get the coingecko api list
+      console.log(`Error: ${err}`);
+      return cb('');
+    }
+  });
+}
+
+function coinpaprika_coin_list_api(market_symbols, cb) {
+  let coin_array = [];
+  let call_coin_list_api = false;
+
+  // check if market_symbols is an array
+  if (!Array.isArray(market_symbols)) {
+    // add this symbol to an array
+    market_symbols = [{currency: market_symbols}];
+  }
+
+  // loop through all symbols
+  for (var symbol of market_symbols) {
+    // check if this symbol has a default coinpaprika id in the settings
+    const index = settings.default_coinpaprika_ids ? settings.default_coinpaprika_ids.findIndex(p => p.symbol.toLowerCase() == symbol.currency.toLowerCase()) : -1;
+
+    // check if the coin symbol is found in settings
+    if (index > -1) {
+      // add this symbol and id to a new array
+      coin_array.push({
+        id: settings.default_coinpaprika_ids[index].id.toLowerCase(),
+        symbol: symbol.currency.toLowerCase()
+      });
+    } else {
+      // missing at least 1 symbol, so the coinpaprika api must be called
+      call_coin_list_api = true;
+      break;
+    }
+  }
+
+  // check if the coin list api needs to be called
+  if (call_coin_list_api) {
+    const coinpaprika = require('../lib/apis/coinpaprika');
+
+    // get the list of coins from coinpaprika
+    coinpaprika.get_coin_data(function (err, coin_list) {
+      // check if there was an error
+      if (err == null) {
+        // initialize the rate limiter to wait 2 seconds between requests to prevent abusing external apis
+        const rateLimitLib = require('../lib/ratelimit');
+        const rateLimit = new rateLimitLib.RateLimit(1, 2000, false);
+
+        // automatically pause for 2 seconds in between requests
+        rateLimit.schedule(function() {
+          return cb(err, coin_list);
+        });
+      } else {
+        return cb(err, coin_list);
+      }
+    });
+  } else {
+    // return the custom array of known symbols and ids
+    return cb(null, coin_array);
+  }
+}
+
+function find_coinpaprika_id(symbol, cb) {
+  coinpaprika_coin_list_api(symbol, function (err, coin_list) {
+    // check for errors
+    if (err == null) {
+      // find the index of the first coin symbol match
+      const index = coin_list.findIndex(p => p.symbol.toLowerCase() == symbol.toLowerCase());
+
+      // check if the coin symbol is found in the api coin list
+      if (index > -1)
+        return cb(coin_list[index].id);
+      else {
+        // coin symbol not found in the api
+        console.log('Error: Cannot find symbol "' + symbol + '" in the coinpaprika api');
+        return cb('');
+      }
+    } else {
+      // failed to get the coinpaprika api list
       console.log(`Error: ${err}`);
       return cb('');
     }
