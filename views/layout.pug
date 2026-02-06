@@ -165,7 +165,7 @@ html(lang='en')
     else
       - showNethashChart = false
       - showDifficultyChart = false
-    if active == 'home' || active == 'address' || active == 'block' || active == 'markets' || active == 'masternodes' || active == 'movement' || active == 'network' || active == 'orphans' || active == 'reward' || active == 'richlist' || active == 'tx'
+    if active == 'home' || active == 'address' || active == 'block' || active == 'dashboard' || active == 'markets' || active == 'masternodes' || active == 'movement' || active == 'network' || active == 'orphans' || active == 'reward' || active == 'richlist' || active == 'tx'
       include ./includes/common.pug
     if active == 'markets' || active == 'richlist' || active == 'reward' || showNethashChart == true || showDifficultyChart == true
       script(type='text/javascript', src='https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js')
@@ -459,22 +459,22 @@ html(lang='en')
 
             splitValue = Number(parseFloat(json.lastPrice).toFixed(8) * parseInt(parseFloat(json.supply).toFixed(0))).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
             splitParts = splitValue.split('.');
-            $("#marketCap").html(splitParts[0] + '.<span class="decimal">' + splitParts[1] + '</span>');
+            $("#marketCap").html(splitParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(splitParts[1]) + '</span>');
             showTopPanelData('marketCapPanel', 'marketCapPanelLoading');
 
             splitValue = Number(parseFloat(json.lastUSDPrice).toFixed(8) * parseInt(parseFloat(json.supply).toFixed(0))).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
             splitParts = splitValue.split('.');
-            $("#usdMarketCap").html(splitParts[0] + '.<span class="decimal">' + splitParts[1] + '</span>');
+            $("#usdMarketCap").html(splitParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(splitParts[1]) + '</span>');
             showTopPanelData('usdMarketCapPanel', 'usdMarketCapPanelLoading');
 
             splitParts = diffString.split('.');
-            $("#difficulty").html(splitParts[0] + '.<span class="decimal">' + splitParts[1] + '</span>');
+            $("#difficulty").html(splitParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(splitParts[1]) + '</span>');
 
             if (json.difficultyHybrid == null || json.difficultyHybrid == '')
               $("#difficultyHybrid").html('-');
             else {
               splitParts = json.difficultyHybrid.split('.');
-              $("#difficultyHybrid").html(splitParts[0] + '.<span class="decimal">' + splitParts[1] + '</span>');
+              $("#difficultyHybrid").html(splitParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(splitParts[1]) + '</span>');
             }
 
             showTopPanelData('difficultypanel', 'difficultyPanelLoading');
@@ -483,18 +483,18 @@ html(lang='en')
               $("#hashrate").html('-');
             else {
               splitParts = hashrateString.split('.');
-              $("#hashrate").html(splitParts[0] + '.<span class="decimal">' + splitParts[1] + '</span>');
+              $("#hashrate").html(splitParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(splitParts[1]) + '</span>');
             }
             showTopPanelData('hashratepanel', 'hashratePanelLoading');
 
             splitValue = Number(json.lastPrice).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
             splitParts = splitValue.split('.');
-            $("#lastPrice").html(splitParts[0] + '.<span class="decimal">' + splitParts[1] + '</span>');
+            $("#lastPrice").html(splitParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(splitParts[1]) + '</span>');
             showTopPanelData('pricepanel', 'pricePanelLoading');
 
             splitValue = Number(json.lastUSDPrice).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
             splitParts = splitValue.split('.');
-            $("#lastUSDPrice").html(splitParts[0] + '.<span class="decimal">' + splitParts[1] + '</span>');
+            $("#lastUSDPrice").html(splitParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(splitParts[1]) + '</span>');
             showTopPanelData('usdpricepanel', 'usdPricePanelLoading');
           }});
         }
@@ -1481,6 +1481,11 @@ html(lang='en')
                     a.nav-link(href='/network')
                       span.fa-solid.fa-network-wired
                       span.margin-left-5 #{settings.localization.menu_network}
+                if settings.blockchain_dashboard && settings.blockchain_dashboard.enabled == true
+                  li#dashboard.nav-item
+                    a.nav-link(href='/dashboard')
+                      span.fa-solid.fa-chart-column
+                      span.margin-left-5 Blockchain Dashboard
                 if settings.richlist_page.enabled == true
                   li#richlist.nav-item
                     a.nav-link(href='/richlist')
@@ -1606,6 +1611,11 @@ html(lang='en')
                   a.nav-link(href='/network')
                     span.nav-icon.fa-solid.fa-network-wired
                     span.margin-left-5 #{settings.localization.menu_network}
+              if settings.blockchain_dashboard && settings.blockchain_dashboard.enabled == true
+                li#dashboard.nav-item(alt="Blockchain Dashboard", title="Blockchain Dashboard", data-bs-toggle='tooltip', data-bs-placement='right')
+                  a.nav-link(href='/dashboard')
+                    span.nav-icon.fa-solid.fa-chart-column
+                    span.margin-left-5 Blockchain Dashboard
               if settings.richlist_page.enabled == true
                 li#richlist.nav-item(alt=settings.localization.menu_richlist, title=settings.localization.menu_richlist, data-bs-toggle='tooltip', data-bs-placement='right')
                   a.nav-link(href='/richlist')

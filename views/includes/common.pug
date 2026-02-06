@@ -10,3 +10,9 @@ script.
     else
       return luxon.DateTime.fromSeconds(unixtime).toUTC().toFormat('#{settings.shared_pages.date_time.display_format}');
   }
+  
+  // Format decimal portion with spaces after every 3rd digit
+  function format_decimal_with_spaces(decimalStr) {
+    if (!decimalStr) return '';
+    return decimalStr.replace(/(\d{3})/g, '$1 ').trim();
+  }

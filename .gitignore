@@ -93,4 +93,9 @@ temp/
 # Backup files
 *.bak
 *.backup
+*.backup2
+*.old
 backups/
+
+# Test scripts (development only)
+test_*.js

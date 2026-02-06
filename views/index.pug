@@ -67,7 +67,7 @@ block content
           const outputs = data[3];
           const amount = Number(data[4]).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
           const amountParts = amount.split('.');
-          const updatedAmount = amountParts[0] + '.<span class="decimal">' + amountParts[1] + '</span>';
+          const updatedAmount = amountParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(amountParts[1]) + '</span>';
           const timestamp = data[5];
           let offset = 0;
 

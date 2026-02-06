@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node --stack-size=10000 ./bin/cluster",
     "stop": "node ./scripts/stop_explorer.js",
+    "reload": "./scripts/reload_explorer.sh",
     "start-instance": "npm run prestart && node --stack-size=10000 ./bin/cluster 1",
     "start-forever": "npm run prestart \"forever production\"",
     "stop-forever": "forever stop \"explorer\"",
