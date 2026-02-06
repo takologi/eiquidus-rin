@@ -7,7 +7,9 @@ var DashboardBlockStatsSchema = new Schema({
   block_interval: { type: Number, default: 0 },
   tx_count: { type: Number, default: 0 },
   block_size: { type: Number, default: 0 },
-  fees: { type: Number, default: 0 },
+  fees: { type: Number, default: 0 },  // Total tx fees in satoshi
+  block_reward: { type: Number, default: 0 },  // Block reward in satoshi (coinbase - fees)
+  tx_value: { type: Number, default: 0 },  // Total tx value in satoshi (excluding coinbase)
   difficulty: { type: Number, default: 0 },
   hash: { type: String, required: true }
 }, {id: false});

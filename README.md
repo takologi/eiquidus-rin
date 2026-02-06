@@ -103,15 +103,18 @@ Table of Contents
 - Sass support
 - Pages/features:
   - **Home/Explorer:** Displays latest blockchain transactions
+  - **Blockchain Dashboard:** Displays comprehensive blockchain analytics including rolling averages (60/1440/10000 blocks), configurable time-series charts (transaction count, transaction value, block rewards, fees, blocks per day, average block time), and synchronized chart tooltips for easy data comparison across metrics. Requires periodic sync via cron job to keep data current
   - **Masternodes:** Displays the current listing of all masternodes known to be active on the network. *\*only applicable to masternode coins*
   - **Movement:** Displays latest blockchain transactions that are greater than a certain configurable amount
   - **Network:** Displays a list of peers that have connected to the coind wallet in the past 24 hours, along with useful addnode data that can be used to connect your own wallets to the network easier
   - **Top 100:** Displays the top 100 richest wallet addresses, the top 100 wallet addresses that have the highest total number of coins received based on adding up all received transactions, as well as a table and pie chart breakdown of wealth distribution. Additional support for omitting burned coins from top 100 lists
-  - **Markets:** Displays a number of exchange-related metrics including market summary, 24 hour chart, most recent buy/sell orders and latest trade history. Has the ability to integrate directly with exchange apis and/or the coingecko api from [https://www.coingecko.com/en/api](https://www.coingecko.com/en/api) to retrieve current market prices and convert to USD. The following 8 cryptocurrency exchanges are supported:
+  - **Markets:** Displays a number of exchange-related metrics including market summary, 24 hour chart, most recent buy/sell orders and latest trade history. Has the ability to integrate directly with exchange apis and/or the coingecko api from [https://www.coingecko.com/en/api](https://www.coingecko.com/en/api) and the coinpaprika api from [https://coinpaprika.com/api](https://coinpaprika.com/api) to retrieve current market prices and convert to USD. The following 10 cryptocurrency exchanges are supported:
     - [AltMarkets](https://altmarkets.io)
     - [Dex-Trade](https://dex-trade.com)
     - [Dexomy](https://dexomy.com)
+    - [Exbitron](https://exbitron.com)
     - [FreiExchange](https://freiexchange.com)/[FreiXLite](https://freixlite.com) *\*no chart support due to a lack of OHLCV api data*
+    - [Nestex](https://nestex.one)
     - [NonKyc](https://nonkyc.io)
     - [Poloniex](https://poloniex.com)
     - [Xeggex](https://xeggex.com)
@@ -556,12 +559,13 @@ Also see the [Useful Scripts](#useful-scripts) section for more helpful scripts.
 
 #### Sample Crontab
 
-*Example crontab; update index every minute, market data every 2 minutes, peers and masternodes every 5 minutes*
+*Example crontab; update index every minute, dashboard every minute, market data every 2 minutes, peers and masternodes every 5 minutes*
 
 Easier crontab syntax using npm scripts, but may not work on some systems depending on permissions and how nodejs was installed:
 
 ```
 */1 * * * * cd /path/to/explorer && npm run sync-blocks > /dev/null 2>&1
+*/1 * * * * cd /path/to/explorer && /path/to/node scripts/update_dashboard.js > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && npm run sync-markets > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && npm run sync-peers > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && npm run sync-masternodes > /dev/null 2>&1
@@ -571,6 +575,7 @@ Or, run the crontab by calling the sync script directly, which should work bette
 
 ```
 */1 * * * * cd /path/to/explorer && /path/to/node scripts/sync.js update > /dev/null 2>&1
+*/1 * * * * cd /path/to/explorer && /path/to/node scripts/update_dashboard.js > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && /path/to/node scripts/sync.js market > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && /path/to/node scripts/sync.js peers > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && /path/to/node scripts/sync.js masternodes > /dev/null 2>&1

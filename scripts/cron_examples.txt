@@ -1,0 +1,44 @@
+# Dashboard Update Cron Examples
+#
+# These cron job examples run the dashboard update script periodically
+# to keep the dashboard data synchronized with the blockchain
+#
+# The update script is idempotent - it only processes new blocks and 
+# skips already-processed blocks, so it's safe to run frequently
+#
+# Installation:
+# 1. Edit your crontab: crontab -e
+# 2. Add one of the examples below
+# 3. Adjust the path if eIquidus is installed elsewhere
+
+
+# ----------------------------------------------------------------------
+# RECOMMENDED: Run every minute (ideal for Rincoin with 60s block time)
+# ----------------------------------------------------------------------
+* * * * * cd /opt/elquidus && /usr/bin/node scripts/update_dashboard.js >> /var/log/elquidus/dashboard_update.log 2>&1
+
+
+# ----------------------------------------------------------------------
+# Run every 5 minutes (for slower coins with 5+ minute block times)
+# ----------------------------------------------------------------------
+# */5 * * * * cd /opt/elquidus && /usr/bin/node scripts/update_dashboard.js >> /var/log/elquidus/dashboard_update.log 2>&1
+
+
+# ----------------------------------------------------------------------
+# Run every 10 minutes (for coins with 10+ minute block times like Bitcoin)
+# ----------------------------------------------------------------------
+# */10 * * * * cd /opt/elquidus && /usr/bin/node scripts/update_dashboard.js >> /var/log/elquidus/dashboard_update.log 2>&1
+
+
+# ----------------------------------------------------------------------
+# Run every hour (minimal updates, for testing or low-priority coins)
+# ----------------------------------------------------------------------
+# 0 * * * * cd /opt/elquidus && /usr/bin/node scripts/update_dashboard.js >> /var/log/elquidus/dashboard_update.log 2>&1
+
+
+# NOTE: Create the log directory first:
+# sudo mkdir -p /var/log/elquidus
+# sudo chown $USER:$USER /var/log/elquidus
+
+# To view logs:
+# tail -f /var/log/elquidus/dashboard_update.log

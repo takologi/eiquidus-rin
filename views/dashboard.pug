@@ -3,60 +3,94 @@ extends layout
 block content
   if hasTimeSeries
     script(src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js')
+    script(src='https://cdn.jsdelivr.net/gh/joeuhren/chartjs-plugin-crosshair@v2.0.5/build/chartjs-plugin-crosshair.min.js')
+    script(src='https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1')
+  script.
+    $(document).ready(function() {
+      // Handle last updated date display
+      if ('#{dashboardSettings.page_header.show_last_updated}' == 'true') {
+        var lastUpdatedDate = #{(last_updated == null || last_updated == '0' ? 0 : last_updated)};
+        if (lastUpdatedDate != 0) {
+          $('span#lastUpdatedDate').html(' ' + format_unixtime(lastUpdatedDate));
+        } else
+          $('span#lastUpdatedDate').html(' N/A');
+      }
+    });
   
   .container-fluid
     .row.mt-4
       .col-12
-        h1.mb-4 #{settings.coin.name} Blockchain Dashboard
+        .d-flex.justify-content-between.align-items-center.mb-4
+          h1.mb-0 #{settings.coin.name} Blockchain Dashboard
+          if hasTimeSeries && dashboardSettings.time_filters && dashboardSettings.time_filters.length > 0
+            .btn-group(role='group' aria-label='Time range selector')
+              each filterDays in dashboardSettings.time_filters
+                if filterDays === -1
+                  a.btn.btn-sm.btn-outline-primary(href='/dashboard?days=all' class=(timeRange == 'all' ? 'active' : '')) All Time
+                else
+                  a.btn.btn-sm.btn-outline-primary(href=`/dashboard?days=${filterDays}` class=(timeRange == filterDays ? 'active' : ''))= filterDays + ' Days'
+        if dashboardSettings.page_header.show_last_updated == true
+          .sub-page-header
+            span.fw-bold=settings.localization.last_updated + ':'
+            span.text-muted#lastUpdatedDate
     
-    .row.g-4
-      // Latest Block Info
-      .col-xl-3.col-lg-4.col-md-6
-        .card.h-100
-          .card-body
-            h5.card-title
-              i.fas.fa-cube.me-2
-              | Latest Block
-            hr
-            .mb-2
-              strong Height:
-              span.ms-2= data.latestBlockHeight
-            .mb-2
-              strong Hash:
-              .text-break.small.mt-1
-                a(href='/block/' + data.latestBlockHash)= data.latestBlockHash
+    if dashboardSettings.top_panels.show_latest_block || dashboardSettings.top_panels.show_difficulty || dashboardSettings.top_panels.show_total_supply || dashboardSettings.top_panels.show_total_transactions
+      .row.g-4
+        // Latest Block Info
+        if dashboardSettings.top_panels.show_latest_block
+          .col-xl-3.col-lg-4.col-md-6
+            .card.h-100
+              .card-body
+                h5.card-title
+                  i.fas.fa-cube.me-2
+                  | Latest Block
+                hr
+                .mb-2
+                  strong Height:
+                  span.ms-2= data.latestBlockHeight.toLocaleString()
+                .mb-2
+                  strong Hash:
+                  .text-break.small.mt-1
+                    a(href='/block/' + data.latestBlockHash)= data.latestBlockHash
 
-      // Difficulty
-      .col-xl-3.col-lg-4.col-md-6
-        .card.h-100
-          .card-body
-            h5.card-title
-              i.fas.fa-chart-line.me-2
-              | Difficulty
-            hr
-            p.h4.mb-0= data.difficulty.toFixed(8)
+        // Difficulty
+        if dashboardSettings.top_panels.show_difficulty
+          .col-xl-3.col-lg-4.col-md-6
+            .card.h-100
+              .card-body
+                h5.card-title
+                  i.fas.fa-chart-line.me-2
+                  | Difficulty
+                hr
+                - var difficultyValue = data.difficulty.toFixed(8);
+                - var difficultyParts = difficultyValue.split(".");
+                - var difficultyDecimal = difficultyParts[1].replace(/(\d{3})/g, '$1 ').trim();
+                p.h4.mb-0 #{difficultyParts[0]}.
+                  span.decimal #{difficultyDecimal}
 
-      // Total Supply
-      .col-xl-3.col-lg-4.col-md-6
-        .card.h-100
-          .card-body
-            h5.card-title
-              i.fas.fa-coins.me-2
-              | Total Supply
-            hr
-            p.h4.mb-0= data.totalSupply.toLocaleString() + ' ' + settings.coin.symbol
+        // Total Supply
+        if dashboardSettings.top_panels.show_total_supply
+          .col-xl-3.col-lg-4.col-md-6
+            .card.h-100
+              .card-body
+                h5.card-title
+                  i.fas.fa-coins.me-2
+                  | Total Supply
+                hr
+                p.h4.mb-0= data.totalSupply.toLocaleString() + ' ' + settings.coin.symbol
 
-      // Total Transactions
-      .col-xl-3.col-lg-4.col-md-6
-        .card.h-100
-          .card-body
-            h5.card-title
-              i.fas.fa-exchange-alt.me-2
-              | Total Transactions
-            hr
-            p.h4.mb-0= data.totalTxCount.toLocaleString()
+        // Total Transactions
+        if dashboardSettings.top_panels.show_total_transactions
+          .col-xl-3.col-lg-4.col-md-6
+            .card.h-100
+              .card-body
+                h5.card-title
+                  i.fas.fa-exchange-alt.me-2
+                  | Total Transactions
+                hr
+                p.h4.mb-0= data.totalTxCount.toLocaleString()
 
-    if hasTimeSeries && rolling
+    if hasTimeSeries && dashboardSettings.rolling_averages.enabled
       .row.g-4.mt-3
         .col-12
           .card
@@ -67,109 +101,358 @@ block content
               hr
               .row
                 .col-md-4
-                  h6 Last 50 Blocks
+                  h6 Last 60 Blocks (~1 Hour)
                   ul.list-unstyled
-                    li
-                      strong Block Interval: 
-                      = rolling.last50.blockInterval.toFixed(2) + ' s'
-                    li
-                      strong Avg Tx Count: 
-                      = rolling.last50.txCount.toFixed(2)
-                    li
-                      strong Avg Fees: 
-                      = (rolling.last50.fees / 100000000).toFixed(8) + ' RIN'
+                    if dashboardSettings.rolling_averages.metrics.show_block_interval
+                      - var blockInterval60 = rolling.last60.blockInterval.toFixed(2);
+                      - var blockInterval60Parts = blockInterval60.split(".");
+                      - var blockInterval60Decimal = blockInterval60Parts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      li
+                        strong Block Interval: 
+                        = blockInterval60Parts[0] + '.'
+                        span.decimal #{blockInterval60Decimal}
+                        = ' s'
+                    if dashboardSettings.rolling_averages.metrics.show_avg_tx_count
+                      - var txCount60 = rolling.last60.txCount.toFixed(2);
+                      - var txCount60Parts = txCount60.split(".");
+                      - var txCount60Decimal = txCount60Parts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      li
+                        strong Avg Tx Count: 
+                        = txCount60Parts[0] + '.'
+                        span.decimal #{txCount60Decimal}
+                    if dashboardSettings.rolling_averages.metrics.show_avg_tx_value
+                      - var txValue60 = ((rolling.last60.txCountSum > 0 ? rolling.last60.txValueSum / rolling.last60.txCountSum : 0) / 100000000).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                      - var txValue60Parts = txValue60.split(".");
+                      - var txValue60Decimal = txValue60Parts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      li
+                        strong Avg Tx Value: 
+                        = txValue60Parts[0] + '.'
+                        span.decimal #{txValue60Decimal}
+                        = ' ' + settings.coin.symbol
+                    if dashboardSettings.rolling_averages.metrics.show_avg_tx_fees
+                      - var fees60 = ((rolling.last60.fees / 100000000).toLocaleString(undefined, {minimumFractionDigits: 8, maximumFractionDigits: 8}));
+                      - var fees60Parts = fees60.split(".");
+                      - var fees60Decimal = fees60Parts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      li
+                        strong Avg Tx Fees: 
+                        = fees60Parts[0] + '.'
+                        span.decimal #{fees60Decimal}
+                        = ' ' + settings.coin.symbol
+                    if dashboardSettings.rolling_averages.metrics.show_sum_tx_count
+                      li
+                        strong Sum Tx Count: 
+                        = rolling.last60.txCountSum.toLocaleString()
+                    if dashboardSettings.rolling_averages.metrics.show_sum_tx_value
+                      - var sumTxValue60 = ((rolling.last60.txValueSum / 100000000).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                      - var sumTxValue60Parts = sumTxValue60.split(".");
+                      - var sumTxValue60Decimal = sumTxValue60Parts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      li
+                        strong Sum Tx Value: 
+                        = sumTxValue60Parts[0] + '.'
+                        span.decimal #{sumTxValue60Decimal}
+                        = ' ' + settings.coin.symbol
+                    if dashboardSettings.rolling_averages.metrics.show_sum_tx_fees
+                      - var sumFees60 = ((rolling.last60.feesSum / 100000000).toLocaleString(undefined, {minimumFractionDigits: 8, maximumFractionDigits: 8}));
+                      - var sumFees60Parts = sumFees60.split(".");
+                      - var sumFees60Decimal = sumFees60Parts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      li
+                        strong Sum Tx Fees: 
+                        = sumFees60Parts[0] + '.'
+                        span.decimal #{sumFees60Decimal}
+                        = ' ' + settings.coin.symbol
                 .col-md-4
-                  h6 Last 500 Blocks
+                  h6 Last 1,440 Blocks (~1 Day)
                   ul.list-unstyled
-                    li
-                      strong Block Interval: 
-                      = rolling.last500.blockInterval.toFixed(2) + ' s'
-                    li
-                      strong Avg Tx Count: 
-                      = rolling.last500.txCount.toFixed(2)
-                    li
-                      strong Avg Fees: 
-                      = (rolling.last500.fees / 100000000).toFixed(8) + ' RIN'
+                    if dashboardSettings.rolling_averages.metrics.show_block_interval
+                      - var blockInterval1440 = rolling.last1440.blockInterval.toFixed(2);
+                      - var blockInterval1440Parts = blockInterval1440.split(".");
+                      - var blockInterval1440Decimal = blockInterval1440Parts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      li
+                        strong Block Interval: 
+                        = blockInterval1440Parts[0] + '.'
+                        span.decimal #{blockInterval1440Decimal}
+                        = ' s'
+                    if dashboardSettings.rolling_averages.metrics.show_avg_tx_count
+                      - var txCount1440 = rolling.last1440.txCount.toFixed(2);
+                      - var txCount1440Parts = txCount1440.split(".");
+                      - var txCount1440Decimal = txCount1440Parts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      li
+                        strong Avg Tx Count: 
+                        = txCount1440Parts[0] + '.'
+                        span.decimal #{txCount1440Decimal}
+                    if dashboardSettings.rolling_averages.metrics.show_avg_tx_value
+                      - var txValue1440 = ((rolling.last1440.txCountSum > 0 ? rolling.last1440.txValueSum / rolling.last1440.txCountSum : 0) / 100000000).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                      - var txValue1440Parts = txValue1440.split(".");
+                      - var txValue1440Decimal = txValue1440Parts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      li
+                        strong Avg Tx Value: 
+                        = txValue1440Parts[0] + '.'
+                        span.decimal #{txValue1440Decimal}
+                        = ' ' + settings.coin.symbol
+                    if dashboardSettings.rolling_averages.metrics.show_avg_tx_fees
+                      - var fees1440 = ((rolling.last1440.fees / 100000000).toLocaleString(undefined, {minimumFractionDigits: 8, maximumFractionDigits: 8}));
+                      - var fees1440Parts = fees1440.split(".");
+                      - var fees1440Decimal = fees1440Parts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      li
+                        strong Avg Tx Fees: 
+                        = fees1440Parts[0] + '.'
+                        span.decimal #{fees1440Decimal}
+                        = ' ' + settings.coin.symbol
+                    if dashboardSettings.rolling_averages.metrics.show_sum_tx_count
+                      li
+                        strong Sum Tx Count: 
+                        = rolling.last1440.txCountSum.toLocaleString()
+                    if dashboardSettings.rolling_averages.metrics.show_sum_tx_value
+                      - var sumTxValue1440 = ((rolling.last1440.txValueSum / 100000000).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                      - var sumTxValue1440Parts = sumTxValue1440.split(".");
+                      - var sumTxValue1440Decimal = sumTxValue1440Parts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      li
+                        strong Sum Tx Value: 
+                        = sumTxValue1440Parts[0] + '.'
+                        span.decimal #{sumTxValue1440Decimal}
+                        = ' ' + settings.coin.symbol
+                    if dashboardSettings.rolling_averages.metrics.show_sum_tx_fees
+                      - var sumFees1440 = ((rolling.last1440.feesSum / 100000000).toLocaleString(undefined, {minimumFractionDigits: 8, maximumFractionDigits: 8}));
+                      - var sumFees1440Parts = sumFees1440.split(".");
+                      - var sumFees1440Decimal = sumFees1440Parts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      li
+                        strong Sum Tx Fees: 
+                        = sumFees1440Parts[0] + '.'
+                        span.decimal #{sumFees1440Decimal}
+                        = ' ' + settings.coin.symbol
                 .col-md-4
-                  h6 Last 1500 Blocks
+                  h6 Last 10,000 Blocks (~1 Week)
                   ul.list-unstyled
-                    li
-                      strong Block Interval: 
-                      = rolling.last1500.blockInterval.toFixed(2) + ' s'
-                    li
-                      strong Avg Tx Count: 
-                      = rolling.last1500.txCount.toFixed(2)
-                    li
-                      strong Avg Fees: 
-                      = (rolling.last1500.fees / 100000000).toFixed(8) + ' RIN'
+                    if dashboardSettings.rolling_averages.metrics.show_block_interval
+                      - var blockInterval10000 = rolling.last10000.blockInterval.toFixed(2);
+                      - var blockInterval10000Parts = blockInterval10000.split(".");
+                      - var blockInterval10000Decimal = blockInterval10000Parts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      li
+                        strong Block Interval: 
+                        = blockInterval10000Parts[0] + '.'
+                        span.decimal #{blockInterval10000Decimal}
+                        = ' s'
+                    if dashboardSettings.rolling_averages.metrics.show_avg_tx_count
+                      - var txCount10000 = rolling.last10000.txCount.toFixed(2);
+                      - var txCount10000Parts = txCount10000.split(".");
+                      - var txCount10000Decimal = txCount10000Parts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      li
+                        strong Avg Tx Count: 
+                        = txCount10000Parts[0] + '.'
+                        span.decimal #{txCount10000Decimal}
+                    if dashboardSettings.rolling_averages.metrics.show_avg_tx_value
+                      - var txValue10000 = ((rolling.last10000.txCountSum > 0 ? rolling.last10000.txValueSum / rolling.last10000.txCountSum : 0) / 100000000).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                      - var txValue10000Parts = txValue10000.split(".");
+                      - var txValue10000Decimal = txValue10000Parts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      li
+                        strong Avg Tx Value: 
+                        = txValue10000Parts[0] + '.'
+                        span.decimal #{txValue10000Decimal}
+                        = ' ' + settings.coin.symbol
+                    if dashboardSettings.rolling_averages.metrics.show_avg_tx_fees
+                      - var fees10000 = ((rolling.last10000.fees / 100000000).toLocaleString(undefined, {minimumFractionDigits: 8, maximumFractionDigits: 8}));
+                      - var fees10000Parts = fees10000.split(".");
+                      - var fees10000Decimal = fees10000Parts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      li
+                        strong Avg Tx Fees: 
+                        = fees10000Parts[0] + '.'
+                        span.decimal #{fees10000Decimal}
+                        = ' ' + settings.coin.symbol
+                    if dashboardSettings.rolling_averages.metrics.show_sum_tx_count
+                      li
+                        strong Sum Tx Count: 
+                        = rolling.last10000.txCountSum.toLocaleString()
+                    if dashboardSettings.rolling_averages.metrics.show_sum_tx_value
+                      - var sumTxValue10000 = ((rolling.last10000.txValueSum / 100000000).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                      - var sumTxValue10000Parts = sumTxValue10000.split(".");
+                      - var sumTxValue10000Decimal = sumTxValue10000Parts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      li
+                        strong Sum Tx Value: 
+                        = sumTxValue10000Parts[0] + '.'
+                        span.decimal #{sumTxValue10000Decimal}
+                        = ' ' + settings.coin.symbol
+                    if dashboardSettings.rolling_averages.metrics.show_sum_tx_fees
+                      - var sumFees10000 = ((rolling.last10000.feesSum / 100000000).toLocaleString(undefined, {minimumFractionDigits: 8, maximumFractionDigits: 8}));
+                      - var sumFees10000Parts = sumFees10000.split(".");
+                      - var sumFees10000Decimal = sumFees10000Parts[1].replace(/(\d{3})/g, '$1 ').trim();
+                      li
+                        strong Sum Tx Fees: 
+                        = sumFees10000Parts[0] + '.'
+                        span.decimal #{sumFees10000Decimal}
+                        = ' ' + settings.coin.symbol
 
-      if daily && daily.length > 0
+    if hasTimeSeries && daily && daily.length > 0
+      - let chartCounter = 0
+      if dashboardSettings.charts.show_tx_count || dashboardSettings.charts.show_tx_value
         .row.g-4.mt-3
-          .col-lg-6
-            .card
-              .card-body
-                h5.card-title Daily Transaction Count
-                canvas#txCountChart
-          .col-lg-6
-            .card
-              .card-body
-                h5.card-title Daily Average Block Time
-                canvas#blockTimeChart
-        
+          if dashboardSettings.charts.show_tx_count
+            - chartCounter++
+            .col-lg-6
+              .card
+                .card-body
+                  h5.card-title= chartCounter + '. Daily Transaction Count (Net)'
+                  canvas(id='txCountChart')
+          if dashboardSettings.charts.show_tx_value
+            - chartCounter++
+            .col-lg-6
+              .card
+                .card-body
+                  h5.card-title= chartCounter + '. Daily Transaction Value (Net)'
+                  canvas(id='txValueChart')
+      
+      if dashboardSettings.charts.show_block_rewards || dashboardSettings.charts.show_fees
         .row.g-4.mt-3
-          .col-lg-6
-            .card
-              .card-body
-                h5.card-title Daily Blocks
-                canvas#blocksChart
-          .col-lg-6
-            .card
-              .card-body
-                h5.card-title Daily Fees
-                canvas#feesChart
+          if dashboardSettings.charts.show_block_rewards
+            - chartCounter++
+            .col-lg-6
+              .card
+                .card-body
+                  h5.card-title= chartCounter + '. Daily Block Rewards'
+                  canvas(id='blockRewardChart')
+          if dashboardSettings.charts.show_fees
+            - chartCounter++
+            .col-lg-6
+              .card
+                .card-body
+                  h5.card-title= chartCounter + '. Daily Fees'
+                  canvas(id='feesChart')
+      
+      if dashboardSettings.charts.show_blocks || dashboardSettings.charts.show_block_time
+        .row.g-4.mt-3
+          if dashboardSettings.charts.show_blocks
+            - chartCounter++
+            .col-lg-6
+              .card
+                .card-body
+                  h5.card-title= chartCounter + '. Daily Blocks'
+                  canvas(id='blocksChart')
+          if dashboardSettings.charts.show_block_time
+            - chartCounter++
+            .col-lg-6
+              .card
+                .card-body
+                  h5.card-title= chartCounter + '. Daily Average Block Time'
+                  canvas(id='blockTimeChart')
 
-        script.
-          document.addEventListener('DOMContentLoaded', function() {
-            const dailyData = !{JSON.stringify(daily)};
-            const labels = dailyData.map(d => d.date);
-            
-            // Transaction Count Chart
+      script.
+        document.addEventListener('DOMContentLoaded', function() {
+          const dailyData = !{JSON.stringify(daily)};
+          const labels = dailyData.map(d => d.date);
+          const timeRange = !{JSON.stringify(timeRange)};
+          const dashboardSettings = !{JSON.stringify(dashboardSettings)};
+          
+          // Determine if points should be hidden based on time range and filter configuration
+          let hidePoints = false;
+          if (dashboardSettings.time_filters && dashboardSettings.time_filters.length > 0) {
+            const maxFilter = Math.max(...dashboardSettings.time_filters.filter(f => f !== -1));
+            hidePoints = (timeRange === 'all' || (typeof timeRange === 'number' && timeRange >= 90));
+          }
+          
+          // Common options for all charts
+          const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: true,
+            interaction: {
+              mode: 'index',
+              intersect: false
+            },
+            plugins: {
+              tooltip: {
+                mode: 'index',
+                intersect: false
+              },
+              crosshair: {
+                line: {
+                  color: '#F66',
+                  width: 1,
+                  dashPattern: [5, 5]
+                },
+                sync: {
+                  enabled: true,
+                  group: 1,
+                  suppressTooltips: false
+                },
+                zoom: {
+                  enabled: false
+                }
+              }
+            }
+          };
+          
+          // 1. Transaction Count Chart
+          if (dashboardSettings.charts.show_tx_count) {
             new Chart(document.getElementById('txCountChart'), {
-              type: 'line',
+              type: 'bar',
               data: {
                 labels: labels,
                 datasets: [{
-                  label: 'Total Transactions',
+                  label: 'Transaction Count (Net)',
                   data: dailyData.map(d => d.tx_count_total),
-                  borderColor: 'rgb(75, 192, 192)',
-                  tension: 0.1
+                  backgroundColor: 'rgb(75, 192, 192)'
                 }]
               },
-              options: {
-                responsive: true,
-                maintainAspectRatio: true
-              }
+              options: commonOptions
             });
-            
-            // Block Time Chart
-            new Chart(document.getElementById('blockTimeChart'), {
+          }
+          
+          // 2. Transaction Value Chart
+          if (dashboardSettings.charts.show_tx_value) {
+            new Chart(document.getElementById('txValueChart'), {
               type: 'line',
               data: {
                 labels: labels,
                 datasets: [{
-                  label: 'Avg Block Time (seconds)',
-                  data: dailyData.map(d => d.avg_block_time),
-                  borderColor: 'rgb(255, 99, 132)',
-                  tension: 0.1
+                  label: 'Transaction Value (' + !{JSON.stringify(settings.coin.symbol)} + ')',
+                  data: dailyData.map(d => d.tx_value_total),
+                  borderColor: 'rgb(153, 102, 255)',
+                  backgroundColor: 'rgba(153, 102, 255, 0.1)',
+                  fill: true,
+                  tension: 0.1,
+                  pointRadius: hidePoints ? 0 : 3,
+                  pointHoverRadius: hidePoints ? 0 : 5
                 }]
               },
-              options: {
-                responsive: true,
-                maintainAspectRatio: true
-              }
+              options: commonOptions
             });
-            
-            // Blocks Chart
+          }
+          
+          // 3. Block Reward Chart
+          if (dashboardSettings.charts.show_block_rewards) {
+            new Chart(document.getElementById('blockRewardChart'), {
+              type: 'bar',
+              data: {
+                labels: labels,
+                datasets: [{
+                  label: 'Block Rewards (' + !{JSON.stringify(settings.coin.symbol)} + ')',
+                  data: dailyData.map(d => d.block_reward_total),
+                  backgroundColor: 'rgb(255, 159, 64)'
+                }]
+              },
+              options: commonOptions
+            });
+          }
+          
+          // 4. Fees Chart
+          if (dashboardSettings.charts.show_fees) {
+            new Chart(document.getElementById('feesChart'), {
+              type: 'line',
+              data: {
+                labels: labels,
+                datasets: [{
+                  label: 'Total Fees (' + !{JSON.stringify(settings.coin.symbol)} + ')',
+                  data: dailyData.map(d => d.fees_total),
+                  borderColor: 'rgb(255, 205, 86)',
+                  tension: 0.1,
+                  pointRadius: hidePoints ? 0 : 3,
+                  pointHoverRadius: hidePoints ? 0 : 5
+                }]
+              },
+              options: commonOptions
+            });
+          }
+          
+          // 5. Blocks Chart
+          if (dashboardSettings.charts.show_blocks) {
             new Chart(document.getElementById('blocksChart'), {
               type: 'bar',
               data: {
@@ -180,31 +463,30 @@ block content
                   backgroundColor: 'rgb(54, 162, 235)'
                 }]
               },
-              options: {
-                responsive: true,
-                maintainAspectRatio: true
-              }
+              options: commonOptions
             });
-            
-            // Fees Chart
-            new Chart(document.getElementById('feesChart'), {
+          }
+          
+          // 6. Block Time Chart
+          if (dashboardSettings.charts.show_block_time) {
+            new Chart(document.getElementById('blockTimeChart'), {
               type: 'line',
               data: {
                 labels: labels,
                 datasets: [{
-                  label: 'Total Fees (RIN)',
-                  data: dailyData.map(d => d.fees_total / 100000000),
-                  borderColor: 'rgb(255, 205, 86)',
-                  tension: 0.1
+                  label: 'Avg Block Time (seconds)',
+                  data: dailyData.map(d => d.avg_block_time),
+                  borderColor: 'rgb(255, 99, 132)',
+                  tension: 0.1,
+                  pointRadius: hidePoints ? 0 : 3,
+                  pointHoverRadius: hidePoints ? 0 : 5
                 }]
               },
-              options: {
-                responsive: true,
-                maintainAspectRatio: true
-              }
+              options: commonOptions
             });
-          });
-    else
+          }
+        });
+    else if !hasTimeSeries
       .row.g-4.mt-1
         // Block Interval
         .col-xl-3.col-lg-4.col-md-6
@@ -225,44 +507,5 @@ block content
                 i.fas.fa-list.me-2
                 | Recent Block Txs
               hr
-              p.h4.mb-0= data.recentTxCount
-
-        // Average Tx Count
-        .col-xl-3.col-lg-4.col-md-6
-          .card.h-100
-            .card-body
-              h5.card-title
-                i.fas.fa-chart-bar.me-2
-                | Avg Tx Count
-              hr
-              p.h4.mb-0= data.avgTxCount.toFixed(2)
-              small.text-muted Average of last 10 blocks
-
-        // Network Hashrate
-        .col-xl-3.col-lg-4.col-md-6
-          .card.h-100
-            .card-body
-              h5.card-title
-                i.fas.fa-tachometer-alt.me-2
-                | Network Hashrate
-              hr
-              p.h4.mb-0
-                if data.networkHashrate > 0
-                  = data.networkHashrate.toFixed(2) + ' H/s'
-                else
-                  | N/A
-
-    .row.mt-4
-      .col-12
-        .card
-          .card-body
-            h5.card-title
-              i.fas.fa-info-circle.me-2
-              | About This Dashboard
-            hr
-            p This dashboard displays blockchain statistics for #{settings.coin.name}. Data is sourced directly from the blockchain database.
-            if !hasTimeSeries
-              p
-                strong Note: 
-                | Time-series charts and historical trends are not yet available. The dashboard aggregation service needs to be initialized.
-
+              p.h4.mb-0= data.recentBlockTxs
+              small.text-muted Transactions in latest block

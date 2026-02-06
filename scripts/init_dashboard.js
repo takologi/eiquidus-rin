@@ -10,6 +10,8 @@ const mongoose = require('mongoose');
 const settings = require('../lib/settings');
 const dashboardAggregation = require('../lib/dashboard_aggregation');
 const Stats = require('../models/stats');
+const DashboardBlockStats = require('../models/dashboard_block_stats');
+const DashboardDailyStats = require('../models/dashboard_daily_stats');
 
 // Parse command line arguments
 const startHeight = process.argv[2] ? parseInt(process.argv[2]) : null;
@@ -40,24 +42,48 @@ mongoose.connect(connectionString).then(() => {
     }
 
     const currentHeight = stats.last;
-    const start = startHeight || Math.max(1, currentHeight - 43200); // Default: last 30 days
+    const start = startHeight || 1; // Default: full history from block 1
     const end = endHeight || currentHeight;
 
     console.log(`Current blockchain height: ${currentHeight}`);
     console.log(`Processing blocks from ${start} to ${end}`);
     console.log(`This will process approximately ${((end - start) / 1440).toFixed(1)} days of data\n`);
 
-    processBlocksBulk(start, end, function(success) {
-      if (success) {
-        console.log('\n=== Dashboard initialization complete ===');
-        console.log('The dashboard is now ready to use.');
-        console.log('Visit /dashboard to view the dashboard.');
-      } else {
-        console.error('\n=== Dashboard initialization failed ===');
-      }
+    // Clean old data for this block range before processing
+    console.log('Cleaning old dashboard data for this block range...');
+    
+    DashboardBlockStats.deleteMany({ height: { $gte: start, $lte: end } }).then(() => {
+      console.log('Old block stats cleaned\n');
+      
+      // Also clean daily stats that might be affected
+      // Get date range for affected days
+      const startDate = new Date((Date.now() - ((currentHeight - start) * 60000))).toISOString().split('T')[0];
+      const endDate = new Date().toISOString().split('T')[0];
+      
+      DashboardDailyStats.deleteMany({ date: { $gte: startDate, $lte: endDate } }).then(() => {
+        console.log('Old daily stats cleaned\n');
+        
+        processBlocksBulk(start, end, function(success) {
+          if (success) {
+            console.log('\n=== Dashboard initialization complete ===');
+            console.log('The dashboard is now ready to use.');
+            console.log('Visit /dashboard to view the dashboard.');
+          } else {
+            console.error('\n=== Dashboard initialization failed ===');
+          }
 
+          mongoose.connection.close();
+          process.exit(success ? 0 : 1);
+        });
+      }).catch((err) => {
+        console.error('Error cleaning daily stats:', err);
+        mongoose.connection.close();
+        process.exit(1);
+      });
+    }).catch((err) => {
+      console.error('Error cleaning block stats:', err);
       mongoose.connection.close();
-      process.exit(success ? 0 : 1);
+      process.exit(1);
     });
   }).catch((err) => {
     console.error('Error getting stats:', err);
