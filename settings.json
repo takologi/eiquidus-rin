@@ -26,7 +26,7 @@
     // host: The hostname or ip address of the wallet to connect to (default: localhost)
     "host": "localhost",
     // port: The port # that the wallet is configured to listen for RPC requests on (default: 51573 for Exor wallet)
-    "port": 19556,
+    "port": 9556,
     // username: The wallet RPC username
     "username": "quaputtiaka",
     // password: The wallet RPC password
@@ -37,7 +37,7 @@
   "webserver": {
     // port: Port # to configure the express webserver to listen for http requests on
     //       NOTE: Be sure to configure firewalls to allow traffic through this port or the explorer website may not be accessible remotely
-    "port": 3001,
+    "port": 3091,
     // tls: a collection of settings that pertain to the TLS (Transport Layer Security) protocol feature (aka: ssl or https)
     "tls": {
       // enabled: Enable/disable TLS
@@ -77,7 +77,7 @@
   "coin": {
     // name: Name of the cryptocurrency coin being explored. This value is displayed in the page header when the "shared_pages.page_header.home_link" setting is set to "coin".
     //       NOTE: This value acts as a unique identifier for data stored in mongo and therefore cannot be changed without re-syncing all existing data.
-    "name": "Rincoin",
+    "name": "Rincoin TEST",
     // symbol: The cryptocurrency coin ticker/symbol value. This value is displayed anywhere that coin data is displayed including the index, address, block, movement, reward, richlist/top100 and tx pages
     "symbol": "RIN"
   },
@@ -1453,7 +1453,7 @@
           //          If set to false, the /ext/getaddresstxs api will be completely disabled for public use (no definition on the api page and a disabled error msg if you try to call the endpoint directly) but the api will still be available internally to the explorer
           "enabled": true,
           // max_items_per_query: The maximum # of transactions that can be returned from the /ext/getaddresstxs api endpoint in a single call
-          "max_items_per_query": 100
+          "max_items_per_query": 1000
         },
         // gettx: a collection of settings that pertain to the /ext/gettx api endpoint
         //        Returns information for given tx hash
@@ -1479,7 +1479,7 @@
           //          If set to false, the /ext/getlasttxs api will be completely disabled for public use (no definition on the api page and a disabled error msg if you try to call the endpoint directly) but the api will still be available internally to the explorer
           "enabled": true,
           // max_items_per_query: The maximum # of transactions that can be returned from the /ext/getlasttxs api endpoint in a single call
-          "max_items_per_query": 100,
+          "max_items_per_query": 1000,
           // show_extracted_by: Determine whether to return a new field with the address(es) that mined the block
           //                    If enabled, a new field will be added to the /ext/getlasttxs api endpoint that displays the address(es) that mined the block for the coinbase transaction only
           "show_extracted_by": false
@@ -1630,7 +1630,7 @@
     //         HEAVY: retrieved from getsupply rpc cmd (The "blockchain_specific.heavycoin.enabled" setting must be set to true and the "blockchain_specific.heavycoin.api_cmds.getsupply" setting must be set up correctly for this option to work properly)
     //         BALANCES : get the supply by running a query on the addresses collection and summing up all positive balances (potentially a long running query for blockchains with tons of addresses)
     //         TXOUTSET : retrieved from gettxoutsetinfo rpc cmd
-    "supply": "TXOUTSET",
+    "supply": "COINBASE",
     // batch_size: The maximum number of records before saving data to the database.
     //             This value is used for syncing transactions, addresses and address transactions.
     //             Each record type is processed within a single block so batching only happens if there are more than `batch_size` txes in a single block for example.
