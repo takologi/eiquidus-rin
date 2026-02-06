@@ -1147,7 +1147,7 @@
     "show_market_select": true,
     // exchanges: Enable/disable api integration with any of the available built-in exchanges
     //            Enabled exchanges display a number of exchange-related metrics including market summary, 24 hour chart, most recent buy/sell orders and latest trade history
-    //            Supported exchanges: altmarkets, dex-trade, dexomy, exbitron, freiexchange/freixlite, nestex, nonkyc, poloniex, xeggex, yobit
+    //            Supported exchanges: altmarkets, dex-trade, dexomy, exbitron, freiexchange/freixlite, nestex, nonkyc, poloniex, rabid_rabbit, xeggex, yobit
     //            NOTE: Each exchange has a 'priority' field to control the order in which exchanges appear in the menu (lower numbers appear first)
     "exchanges": {
       // altmarkets: a collection of settings that pertain to the altmarkets exchange
@@ -1276,6 +1276,20 @@
         //                All entries must specify your coins symbol as it is displayed on the exchange, followed by a slash (/) and ending with the symbol of the market or asset that is being traded against
         //                Ex: "LTC/BTC", "LTC/USDT", "LTC/ETH"
         "trading_pairs": [ "LTC/USDT" ]
+      },
+      // rabid_rabbit: a collection of settings that pertain to the rabid_rabbit exchange
+      "rabid_rabbit": {
+        // enabled: Enable/disable the rabid_rabbit exchange (true/false)
+        //          If set to false, the rabid_rabbit page will be completely inaccessible and no market data will be downloaded for this exchange
+        "enabled": false,
+        // priority: Control the order in which this exchange appears in the menu (lower numbers appear first)
+        //           If not specified, defaults to 999
+        "priority": 999,
+        // trading_pairs: An array of market trading pair symbols
+        //                You can add as many trading pairs as necessary
+        //                All entries must specify your coins symbol as it is displayed on the exchange, followed by a slash (/) and ending with the symbol of the market or asset that is being traded against
+        //                Ex: "LTC/BTC", "LTC/USDT", "LTC/ETH"
+        "trading_pairs": [ "RIN/USDT" ]
       },
       // yobit: a collection of settings that pertain to the yobit exchange
       //        NOTE: yobit does not display a 24-hour chart due to a lack of OHLCV api data
