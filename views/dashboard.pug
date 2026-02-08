@@ -348,6 +348,53 @@ block content
             hidePoints = (timeRange === 'all' || (typeof timeRange === 'number' && timeRange >= 90));
           }
           
+          // Detect if the last day is the current running day (today)
+          const today = new Date().toISOString().split('T')[0];
+          const lastDataDate = dailyData.length > 0 ? dailyData[dailyData.length - 1].date : null;
+          const isLastDayRunning = lastDataDate === today;
+          
+          // Helper function to create hatched pattern for bar charts
+          function createHatchPattern(color) {
+            // Create a canvas to draw the pattern
+            const canvas = document.createElement('canvas');
+            canvas.width = 10;
+            canvas.height = 10;
+            const ctx = canvas.getContext('2d');
+            
+            // Parse the RGB color and create a lighter version for hatching
+            const rgbMatch = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+            if (rgbMatch) {
+              const r = parseInt(rgbMatch[1]);
+              const g = parseInt(rgbMatch[2]);
+              const b = parseInt(rgbMatch[3]);
+              
+              // Fill with lighter color (70% opacity)
+              ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.3)`;
+              ctx.fillRect(0, 0, 10, 10);
+              
+              // Draw diagonal lines
+              ctx.strokeStyle = color;
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(0, 10);
+              ctx.lineTo(10, 0);
+              ctx.stroke();
+              
+              ctx.beginPath();
+              ctx.moveTo(-5, 5);
+              ctx.lineTo(5, -5);
+              ctx.stroke();
+              
+              ctx.beginPath();
+              ctx.moveTo(5, 15);
+              ctx.lineTo(15, 5);
+              ctx.stroke();
+            }
+            
+            // Return the pattern
+            return ctx.createPattern(canvas, 'repeat');
+          }
+          
           // Common options for all charts
           const commonOptions = {
             responsive: true,
@@ -381,6 +428,14 @@ block content
           
           // 1. Transaction Count Chart
           if (dashboardSettings.charts.show_tx_count) {
+            // Create background colors array - last bar hatched if it's the running day
+            const txCountColors = dailyData.map((d, i) => {
+              if (isLastDayRunning && i === dailyData.length - 1) {
+                return createHatchPattern('rgb(75, 192, 192)');
+              }
+              return 'rgb(75, 192, 192)';
+            });
+            
             new Chart(document.getElementById('txCountChart'), {
               type: 'bar',
               data: {
@@ -388,7 +443,7 @@ block content
                 datasets: [{
                   label: 'Transaction Count (Net)',
                   data: dailyData.map(d => d.tx_count_total),
-                  backgroundColor: 'rgb(75, 192, 192)'
+                  backgroundColor: txCountColors
                 }]
               },
               options: commonOptions
@@ -397,20 +452,57 @@ block content
           
           // 2. Transaction Value Chart
           if (dashboardSettings.charts.show_tx_value) {
+            // For line charts with running day, we need to split the data
+            const txValueDatasets = [];
+            
+            if (isLastDayRunning && dailyData.length > 1) {
+              // Complete days dataset (solid line)
+              txValueDatasets.push({
+                label: 'Transaction Value (' + !{JSON.stringify(settings.coin.symbol)} + ')',
+                data: dailyData.slice(0, -1).map(d => d.tx_value_total),
+                borderColor: 'rgb(153, 102, 255)',
+                backgroundColor: 'rgba(153, 102, 255, 0.1)',
+                fill: true,
+                tension: 0.1,
+                pointRadius: hidePoints ? 0 : 3,
+                pointHoverRadius: hidePoints ? 0 : 5
+              });
+              
+              // Running day segment (dotted line)
+              txValueDatasets.push({
+                label: 'Transaction Value - Running Day (' + !{JSON.stringify(settings.coin.symbol)} + ')',
+                data: [
+                  ...Array(dailyData.length - 2).fill(null),
+                  dailyData[dailyData.length - 2].tx_value_total,
+                  dailyData[dailyData.length - 1].tx_value_total
+                ],
+                borderColor: 'rgb(153, 102, 255)',
+                backgroundColor: 'rgba(153, 102, 255, 0.1)',
+                fill: true,
+                tension: 0.1,
+                borderDash: [5, 5],
+                pointRadius: hidePoints ? 0 : 3,
+                pointHoverRadius: hidePoints ? 0 : 5
+              });
+            } else {
+              // No running day or only one data point - use solid line
+              txValueDatasets.push({
+                label: 'Transaction Value (' + !{JSON.stringify(settings.coin.symbol)} + ')',
+                data: dailyData.map(d => d.tx_value_total),
+                borderColor: 'rgb(153, 102, 255)',
+                backgroundColor: 'rgba(153, 102, 255, 0.1)',
+                fill: true,
+                tension: 0.1,
+                pointRadius: hidePoints ? 0 : 3,
+                pointHoverRadius: hidePoints ? 0 : 5
+              });
+            }
+            
             new Chart(document.getElementById('txValueChart'), {
               type: 'line',
               data: {
                 labels: labels,
-                datasets: [{
-                  label: 'Transaction Value (' + !{JSON.stringify(settings.coin.symbol)} + ')',
-                  data: dailyData.map(d => d.tx_value_total),
-                  borderColor: 'rgb(153, 102, 255)',
-                  backgroundColor: 'rgba(153, 102, 255, 0.1)',
-                  fill: true,
-                  tension: 0.1,
-                  pointRadius: hidePoints ? 0 : 3,
-                  pointHoverRadius: hidePoints ? 0 : 5
-                }]
+                datasets: txValueDatasets
               },
               options: commonOptions
             });
@@ -418,6 +510,14 @@ block content
           
           // 3. Block Reward Chart
           if (dashboardSettings.charts.show_block_rewards) {
+            // Create background colors array - last bar hatched if it's the running day
+            const blockRewardColors = dailyData.map((d, i) => {
+              if (isLastDayRunning && i === dailyData.length - 1) {
+                return createHatchPattern('rgb(255, 159, 64)');
+              }
+              return 'rgb(255, 159, 64)';
+            });
+            
             new Chart(document.getElementById('blockRewardChart'), {
               type: 'bar',
               data: {
@@ -425,7 +525,7 @@ block content
                 datasets: [{
                   label: 'Block Rewards (' + !{JSON.stringify(settings.coin.symbol)} + ')',
                   data: dailyData.map(d => d.block_reward_total),
-                  backgroundColor: 'rgb(255, 159, 64)'
+                  backgroundColor: blockRewardColors
                 }]
               },
               options: commonOptions
@@ -434,18 +534,50 @@ block content
           
           // 4. Fees Chart
           if (dashboardSettings.charts.show_fees) {
+            const feesDatasets = [];
+            
+            if (isLastDayRunning && dailyData.length > 1) {
+              // Complete days dataset (solid line)
+              feesDatasets.push({
+                label: 'Total Fees (' + !{JSON.stringify(settings.coin.symbol)} + ')',
+                data: dailyData.slice(0, -1).map(d => d.fees_total),
+                borderColor: 'rgb(255, 205, 86)',
+                tension: 0.1,
+                pointRadius: hidePoints ? 0 : 3,
+                pointHoverRadius: hidePoints ? 0 : 5
+              });
+              
+              // Running day segment (dotted line)
+              feesDatasets.push({
+                label: 'Total Fees - Running Day (' + !{JSON.stringify(settings.coin.symbol)} + ')',
+                data: [
+                  ...Array(dailyData.length - 2).fill(null),
+                  dailyData[dailyData.length - 2].fees_total,
+                  dailyData[dailyData.length - 1].fees_total
+                ],
+                borderColor: 'rgb(255, 205, 86)',
+                tension: 0.1,
+                borderDash: [5, 5],
+                pointRadius: hidePoints ? 0 : 3,
+                pointHoverRadius: hidePoints ? 0 : 5
+              });
+            } else {
+              // No running day or only one data point
+              feesDatasets.push({
+                label: 'Total Fees (' + !{JSON.stringify(settings.coin.symbol)} + ')',
+                data: dailyData.map(d => d.fees_total),
+                borderColor: 'rgb(255, 205, 86)',
+                tension: 0.1,
+                pointRadius: hidePoints ? 0 : 3,
+                pointHoverRadius: hidePoints ? 0 : 5
+              });
+            }
+            
             new Chart(document.getElementById('feesChart'), {
               type: 'line',
               data: {
                 labels: labels,
-                datasets: [{
-                  label: 'Total Fees (' + !{JSON.stringify(settings.coin.symbol)} + ')',
-                  data: dailyData.map(d => d.fees_total),
-                  borderColor: 'rgb(255, 205, 86)',
-                  tension: 0.1,
-                  pointRadius: hidePoints ? 0 : 3,
-                  pointHoverRadius: hidePoints ? 0 : 5
-                }]
+                datasets: feesDatasets
               },
               options: commonOptions
             });
@@ -453,6 +585,14 @@ block content
           
           // 5. Blocks Chart
           if (dashboardSettings.charts.show_blocks) {
+            // Create background colors array - last bar hatched if it's the running day
+            const blocksColors = dailyData.map((d, i) => {
+              if (isLastDayRunning && i === dailyData.length - 1) {
+                return createHatchPattern('rgb(54, 162, 235)');
+              }
+              return 'rgb(54, 162, 235)';
+            });
+            
             new Chart(document.getElementById('blocksChart'), {
               type: 'bar',
               data: {
@@ -460,7 +600,7 @@ block content
                 datasets: [{
                   label: 'Blocks per Day',
                   data: dailyData.map(d => d.blocks),
-                  backgroundColor: 'rgb(54, 162, 235)'
+                  backgroundColor: blocksColors
                 }]
               },
               options: commonOptions
@@ -469,18 +609,50 @@ block content
           
           // 6. Block Time Chart
           if (dashboardSettings.charts.show_block_time) {
+            const blockTimeDatasets = [];
+            
+            if (isLastDayRunning && dailyData.length > 1) {
+              // Complete days dataset (solid line)
+              blockTimeDatasets.push({
+                label: 'Avg Block Time (seconds)',
+                data: dailyData.slice(0, -1).map(d => d.avg_block_time),
+                borderColor: 'rgb(255, 99, 132)',
+                tension: 0.1,
+                pointRadius: hidePoints ? 0 : 3,
+                pointHoverRadius: hidePoints ? 0 : 5
+              });
+              
+              // Running day segment (dotted line)
+              blockTimeDatasets.push({
+                label: 'Avg Block Time - Running Day (seconds)',
+                data: [
+                  ...Array(dailyData.length - 2).fill(null),
+                  dailyData[dailyData.length - 2].avg_block_time,
+                  dailyData[dailyData.length - 1].avg_block_time
+                ],
+                borderColor: 'rgb(255, 99, 132)',
+                tension: 0.1,
+                borderDash: [5, 5],
+                pointRadius: hidePoints ? 0 : 3,
+                pointHoverRadius: hidePoints ? 0 : 5
+              });
+            } else {
+              // No running day or only one data point
+              blockTimeDatasets.push({
+                label: 'Avg Block Time (seconds)',
+                data: dailyData.map(d => d.avg_block_time),
+                borderColor: 'rgb(255, 99, 132)',
+                tension: 0.1,
+                pointRadius: hidePoints ? 0 : 3,
+                pointHoverRadius: hidePoints ? 0 : 5
+              });
+            }
+            
             new Chart(document.getElementById('blockTimeChart'), {
               type: 'line',
               data: {
                 labels: labels,
-                datasets: [{
-                  label: 'Avg Block Time (seconds)',
-                  data: dailyData.map(d => d.avg_block_time),
-                  borderColor: 'rgb(255, 99, 132)',
-                  tension: 0.1,
-                  pointRadius: hidePoints ? 0 : 3,
-                  pointHoverRadius: hidePoints ? 0 : 5
-                }]
+                datasets: blockTimeDatasets
               },
               options: commonOptions
             });
