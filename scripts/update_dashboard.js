@@ -11,12 +11,58 @@
  */
 
 const mongoose = require('mongoose');
+const fs = require('fs');
+const path = require('path');
 const settings = require('../lib/settings');
 const dashboardAggregation = require('../lib/dashboard_aggregation');
 const Stats = require('../models/stats');
 const DashboardBlockStats = require('../models/dashboard_block_stats');
 
 console.log('=== Dashboard Update Script ===');
+
+const lockPath = path.join(__dirname, '..', 'tmp', 'update_dashboard.lock');
+let lockFd = null;
+
+function releaseLock() {
+  if (lockFd !== null) {
+    try {
+      fs.closeSync(lockFd);
+    } catch (e) {
+      // no-op
+    }
+
+    try {
+      fs.unlinkSync(lockPath);
+    } catch (e) {
+      // no-op
+    }
+
+    lockFd = null;
+  }
+}
+
+try {
+  lockFd = fs.openSync(lockPath, 'wx');
+  fs.writeFileSync(lockFd, `${process.pid}`);
+} catch (err) {
+  if (err.code === 'EEXIST') {
+    console.log('Another update_dashboard instance is already running. Exiting.');
+    process.exit(0);
+  }
+
+  console.error('Failed to acquire dashboard update lock:', err.message);
+  process.exit(1);
+}
+
+process.on('exit', releaseLock);
+process.on('SIGINT', () => {
+  releaseLock();
+  process.exit(1);
+});
+process.on('SIGTERM', () => {
+  releaseLock();
+  process.exit(1);
+});
 
 // Build connection string
 const connectionString = 'mongodb://' + encodeURIComponent(settings.dbsettings.user) +

@@ -7,11 +7,14 @@
  */
 
 const mongoose = require('mongoose');
+const fs = require('fs');
+const path = require('path');
 const settings = require('../lib/settings');
 const dashboardAggregation = require('../lib/dashboard_aggregation');
 const Stats = require('../models/stats');
 const DashboardBlockStats = require('../models/dashboard_block_stats');
 const DashboardDailyStats = require('../models/dashboard_daily_stats');
+const Tx = require('../models/tx');
 
 // Parse command line arguments
 const startHeight = process.argv[2] ? parseInt(process.argv[2]) : null;
@@ -19,6 +22,50 @@ const endHeight = process.argv[3] ? parseInt(process.argv[3]) : null;
 
 console.log('=== Dashboard Initialization (BULK MODE) ===');
 console.log('Using MongoDB aggregation and bulk operations for maximum speed\n');
+
+const lockPath = path.join(__dirname, '..', 'tmp', 'update_dashboard.lock');
+let lockFd = null;
+
+function releaseLock() {
+  if (lockFd !== null) {
+    try {
+      fs.closeSync(lockFd);
+    } catch (e) {
+      // no-op
+    }
+
+    try {
+      fs.unlinkSync(lockPath);
+    } catch (e) {
+      // no-op
+    }
+
+    lockFd = null;
+  }
+}
+
+try {
+  lockFd = fs.openSync(lockPath, 'wx');
+  fs.writeFileSync(lockFd, `${process.pid}`);
+} catch (err) {
+  if (err.code === 'EEXIST') {
+    console.log('Another dashboard process is already running (init/update). Exiting.');
+    process.exit(0);
+  }
+
+  console.error('Failed to acquire dashboard lock:', err.message);
+  process.exit(1);
+}
+
+process.on('exit', releaseLock);
+process.on('SIGINT', () => {
+  releaseLock();
+  process.exit(1);
+});
+process.on('SIGTERM', () => {
+  releaseLock();
+  process.exit(1);
+});
 
 // Build connection string
 const connectionString = 'mongodb://' + encodeURIComponent(settings.dbsettings.user) +
@@ -51,37 +98,22 @@ mongoose.connect(connectionString).then(() => {
 
     // Clean old data for this block range before processing
     console.log('Cleaning old dashboard data for this block range...');
-    
-    DashboardBlockStats.deleteMany({ height: { $gte: start, $lte: end } }).then(() => {
-      console.log('Old block stats cleaned\n');
-      
-      // Also clean daily stats that might be affected
-      // Get date range for affected days
-      const startDate = new Date((Date.now() - ((currentHeight - start) * 60000))).toISOString().split('T')[0];
-      const endDate = new Date().toISOString().split('T')[0];
-      
-      DashboardDailyStats.deleteMany({ date: { $gte: startDate, $lte: endDate } }).then(() => {
-        console.log('Old daily stats cleaned\n');
-        
-        processBlocksBulk(start, end, function(success) {
-          if (success) {
-            console.log('\n=== Dashboard initialization complete ===');
-            console.log('The dashboard is now ready to use.');
-            console.log('Visit /dashboard to view the dashboard.');
-          } else {
-            console.error('\n=== Dashboard initialization failed ===');
-          }
 
-          mongoose.connection.close();
-          process.exit(success ? 0 : 1);
-        });
-      }).catch((err) => {
-        console.error('Error cleaning daily stats:', err);
+    cleanDashboardRange(start, end).then(() => {
+      processBlocksBulk(start, end, function(success) {
+        if (success) {
+          console.log('\n=== Dashboard initialization complete ===');
+          console.log('The dashboard is now ready to use.');
+          console.log('Visit /dashboard to view the dashboard.');
+        } else {
+          console.error('\n=== Dashboard initialization failed ===');
+        }
+
         mongoose.connection.close();
-        process.exit(1);
+        process.exit(success ? 0 : 1);
       });
     }).catch((err) => {
-      console.error('Error cleaning block stats:', err);
+      console.error('Error cleaning dashboard data:', err);
       mongoose.connection.close();
       process.exit(1);
     });
@@ -140,4 +172,57 @@ function processBlocksBulk(startHeight, endHeight, callback) {
   }
 
   processNext();
+}
+
+function cleanDashboardRange(start, end) {
+  return DashboardBlockStats.deleteMany({ height: { $gte: start, $lte: end } })
+    .then((blockDeleteResult) => {
+      console.log(`Old block stats cleaned (${blockDeleteResult.deletedCount || 0} docs)\n`);
+
+      return Tx.aggregate([
+        {
+          $match: {
+            blockindex: { $gte: start, $lte: end }
+          }
+        },
+        {
+          $group: {
+            _id: '$blockindex',
+            time: { $first: '$timestamp' }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            date: {
+              $dateToString: {
+                format: '%Y-%m-%d',
+                date: { $toDate: { $multiply: ['$time', 1000] } }
+              }
+            }
+          }
+        },
+        {
+          $group: {
+            _id: '$date'
+          }
+        },
+        {
+          $sort: { _id: 1 }
+        }
+      ]).exec();
+    })
+    .then((affectedDates) => {
+      const dates = affectedDates.map((item) => item._id);
+
+      if (dates.length === 0) {
+        console.log('Old daily stats cleaned (0 docs, no dates found in tx range)\n');
+        return;
+      }
+
+      return DashboardDailyStats.deleteMany({ date: { $in: dates } })
+        .then((dailyDeleteResult) => {
+          console.log(`Old daily stats cleaned (${dailyDeleteResult.deletedCount || 0} docs across ${dates.length} day(s))\n`);
+        });
+    });
 }
