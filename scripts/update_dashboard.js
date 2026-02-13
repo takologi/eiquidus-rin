@@ -77,7 +77,7 @@ mongoose.connect(connectionString).then(() => {
   console.log('Connected to database');
   
   // Get current blockchain height
-  Stats.findOne({ coin: settings.coin.name }).then((stats) => {
+  Stats.findOne({ coin: (settings.coin.dbname || settings.coin.name) }).then((stats) => {
     if (!stats) {
       console.error('Error: No stats found. Please run block sync first.');
       mongoose.connection.close();

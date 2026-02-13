@@ -11,6 +11,10 @@ const Richlist = require('../models/richlist');
 const Stats = require('../models/stats');
 const settings = require('../lib/settings');
 const async = require('async');
+
+// sync script only performs database and RPC tasks; normalize coin key for DB lookups
+settings.coin.name = (settings.coin.dbname || settings.coin.name);
+
 let mode = 'update';
 let database = 'index';
 let block_start = 1;

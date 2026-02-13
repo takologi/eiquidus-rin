@@ -346,6 +346,11 @@ cp ./settings.json.template ./settings.json
 
 *Make required changes in settings.json*
 
+**Coin naming note (compatibility-safe):**
+- `coin.name` is the display label used by the UI (titles, headers, labels).
+- `coin.dbname` is the MongoDB key used for `coinstats`, `richlists`, and `heavies` lookups.
+- If `coin.dbname` is missing, eIquidus automatically falls back to `coin.name` (backward compatible with older configs/databases).
+
 **NOTE:** You can further customize the site by adding your own javascript code to the `public/js/custom.js` file and css rules to the `public/css/custom.scss` file. Adding changes to `custom.js` and `custom.scss` is the preferred method of customizing your site, without affecting the ability to receive explorer code updates in the future.
 
 ### Start/Stop the Explorer
