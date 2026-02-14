@@ -91,18 +91,27 @@ function finalize_send_tx_data(res, tx, blockcount, orphan, extracted_by_address
   );
 }
 
-function send_address_data(res, address, claim_name) {
+function send_address_data(res, address, claim_name, history_block, history_error, historical_balance) {
+  const history_block_label = (history_block != null
+    ? ('#' + history_block + (address.history_timestamp_text == null ? '' : ' (' + address.history_timestamp_text + ')'))
+    : null);
+  const history_suffix = (history_block_label != null ? ' - History up to Block ' + history_block_label : '');
+
   res.render(
     'address',
     {
       active: 'address',
       address: address,
       claim_name: claim_name,
+      history_block: history_block,
+      history_block_label: history_block_label,
+      history_error: history_error,
+      historical_balance: historical_balance,
       showSync: db.check_show_sync_message(),
       customHash: get_custom_hash(),
       styleHash: get_style_hash(),
       themeHash: get_theme_hash(),
-      page_title_prefix: settings.coin.name + ' ' + 'Address ' + (claim_name == null || claim_name == '' ? address.a_id : claim_name)
+      page_title_prefix: settings.coin.name + ' ' + 'Address ' + (claim_name == null || claim_name == '' ? address.a_id : claim_name) + history_suffix
     }
   );
 }
@@ -349,19 +358,91 @@ function route_get_txlist(res, error) {
   });
 }
 
-function route_get_address(res, hash) {
+function route_get_address(res, hash, history_param) {
+  function format_history_timestamp(timestamp) {
+    if (timestamp == null || isNaN(timestamp))
+      return null;
+
+    const dt = new Date(Number(timestamp) * 1000);
+
+    if (isNaN(dt.getTime()))
+      return null;
+
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = String(dt.getUTCDate()).padStart(2, '0');
+    const month = months[dt.getUTCMonth()];
+    const year = dt.getUTCFullYear();
+    const hours = String(dt.getUTCHours()).padStart(2, '0');
+    const minutes = String(dt.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(dt.getUTCSeconds()).padStart(2, '0');
+
+    return `${month} ${day}, ${year} ${hours}:${minutes}:${seconds} UTC`;
+  }
+
+  function get_history_data(cb) {
+    if (history_param == null || history_param.toString().trim() == '')
+      return cb(null, null, null);
+
+    // ignore non-number values
+    if (!/^\d+$/.test(history_param.toString().trim()))
+      return cb(null, null, null);
+
+    const requested_history_block = Number(history_param);
+
+    db.get_stats(settings.coin.name, function(stats) {
+      // keep latest state and display validation error if out of range
+      if (stats == null || stats.count == null || requested_history_block < 0 || requested_history_block > stats.count) {
+        return cb(null, 'Invalid history block height. Showing latest blockchain state.', null);
+      }
+
+      lib.get_blockhash(requested_history_block, function(blockhash) {
+        if (!blockhash || blockhash == `${settings.localization.ex_error}: ${settings.localization.check_console}`)
+          return cb(null, 'Invalid history block height. Showing latest blockchain state.', null);
+
+        lib.get_block(blockhash, function(block) {
+          if (!block || block == `${settings.localization.ex_error}: ${settings.localization.check_console}` || block.time == null)
+            return cb(null, 'Invalid history block height. Showing latest blockchain state.', null);
+
+          return cb(requested_history_block, null, format_history_timestamp(block.time));
+        });
+      });
+    });
+  }
+
   // check if trying to load a special address
   if (hash != null && hash.toLowerCase() != 'coinbase' && ((hash.toLowerCase() == 'hidden_address' && settings.address_page.enable_hidden_address_view == true) || (hash.toLowerCase() == 'unknown_address' && settings.address_page.enable_unknown_address_view == true) || (hash.toLowerCase() != 'hidden_address' && hash.toLowerCase() != 'unknown_address'))) {
     // lookup address in local collection
     db.get_address(hash, false, function(address) {
       if (address) {
-        if (settings.claim_address_page.enabled == true) {
-          // lookup claim_name for this address if exists
-          db.get_claim_name(hash, function(claim_name) {
-            send_address_data(res, address, claim_name);
-          });
-        } else
-          send_address_data(res, address, null);
+        get_history_data(function(history_block, history_error, history_timestamp_text) {
+          address.history_timestamp_text = history_timestamp_text;
+
+          function finalize_address_render(claim_name, historical_balance) {
+            send_address_data(res, address, claim_name, history_block, history_error, historical_balance);
+          }
+
+          function resolve_claim_name(cb) {
+            if (settings.claim_address_page.enabled == true) {
+              // lookup claim_name for this address if exists
+              db.get_claim_name(hash, function(claim_name) {
+                return cb(claim_name);
+              });
+            } else
+              return cb(null);
+          }
+
+          if (history_block != null && history_error == null) {
+            db.get_address_balance_at_block(hash, history_block, function(historical_balance) {
+              resolve_claim_name(function(claim_name) {
+                finalize_address_render(claim_name, historical_balance);
+              });
+            });
+          } else {
+            resolve_claim_name(function(claim_name) {
+              finalize_address_render(claim_name, null);
+            });
+          }
+        });
       } else
         route_get_txlist(res, hash + ' not found');
     });
@@ -782,7 +863,7 @@ router.get('/claim/:hash', function(req, res) {
 });
 
 router.get('/address/:hash', function(req, res) {
-  route_get_address(res, req.params.hash);
+  route_get_address(res, req.params.hash, req.query.history);
 });
 
 router.get('/orphans', function(req, res) {

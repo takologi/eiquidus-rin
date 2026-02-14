@@ -56,7 +56,7 @@ Notes:
 - Follow-up fix: adjusted DataTables `columnDefs` in `views/index.pug` to explicitly disable only non-sortable columns. This corrected a regression where only the timestamp column appeared sortable and header clicks had no effect.
 - Follow-up fix: switched latest-transactions sort parsing in `app.js` to read DataTables `order[0][column]` and `order[0][dir]` from query params (with safe fallback). This corrected a regression where UI clicks triggered reloads but backend ordering could be ignored.
 
-### Phase 2a (pending)
+### Phase 2a (implemented, pending validation)
 
 Address page accepts `history=xxx` and applies:
 
@@ -65,6 +65,35 @@ Address page accepts `history=xxx` and applies:
 - pagination preserved
 - invalid/non-numeric handling (ignore)
 - out-of-range handling (show validation message, keep latest state)
+
+Implementation details:
+
+- `routes/index.js`
+  - Extended address route handling to parse `history`.
+  - Added validation against current chain height (`stats.count`).
+  - Added warning message for out-of-range values while keeping latest state.
+  - Added page title suffix for valid history mode.
+- `views/address.pug`
+  - Appends `?history=...` to internal address tx table requests.
+  - Shows title suffix ` - History up to Block #xxx (Mon DD, YYYY HH:mm:ss UTC)` for valid history mode.
+  - Shows warning alert when history value is out of range and latest state is shown.
+  - Uses historical balance override in summary balance cell when history mode is active.
+  - Shows text under balance value: `WARNING! This is a balance from the history up to block #xxx (Mon DD, YYYY HH:mm:ss UTC)`.
+- `app.js`
+  - Extended `/ext/getaddresstxs/:address/:start/:length` to accept optional `history` query parameter.
+- `lib/database.js`
+  - Extended `get_address_txs_ajax()` with optional history filter (`blockindex <= history`).
+  - Preserved server-side paging/count/running-balance flow on the filtered dataset.
+
+Validation checklist for Phase 2a:
+
+1. Open an address page without `history`; verify default behavior unchanged.
+2. Open same address with valid `history` less than latest block; verify:
+   - page title includes ` - History up to Block #xxx`
+   - tx table excludes newer blocks
+   - paging still works across filtered rows
+3. Use non-numeric `history` (`abc`); verify latest view loads with no history mode.
+4. Use out-of-range `history` (`very large value`); verify warning appears and latest view is shown.
 
 ### Phase 2b (pending)
 

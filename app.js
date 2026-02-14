@@ -706,11 +706,17 @@ app.use('/ext/getaddresstxs/:address/:start/:length', function(req, res) {
   // check if the getaddresstxs api is enabled or else check the headers to see if it matches an internal ajax request from the explorer itself (TODO: come up with a more secure method of whitelisting ajax calls from the explorer)
   if ((settings.api_page.enabled == true && settings.api_page.public_apis.ext.getaddresstxs.enabled == true) || (req.headers['x-requested-with'] != null && req.headers['x-requested-with'].toLowerCase() == 'xmlhttprequest' && req.headers.referer != null && req.headers.accept.indexOf('text/javascript') > -1 && req.headers.accept.indexOf('application/json') > -1)) {
     var internal = false;
+    var history_block = null;
     // split url suffix by forward slash and remove blank entries
     var split = req.url.split('/').filter(function(v) { return v; });
     // check if this is an internal request
-    if (split.length > 0 && split[0] == 'internal')
+    if (split.length > 0 && split[0].indexOf('internal') == 0)
       internal = true;
+
+    // parse optional history parameter from query string
+    if (req.query != null && req.query.history != null && /^\d+$/.test(req.query.history.toString().trim()))
+      history_block = Number(req.query.history);
+
     // fix parameters
     if (typeof req.params.length === 'undefined' || isNaN(req.params.length) || req.params.length > settings.api_page.public_apis.ext.getaddresstxs.max_items_per_query)
       req.params.length = settings.api_page.public_apis.ext.getaddresstxs.max_items_per_query;
@@ -721,7 +727,7 @@ app.use('/ext/getaddresstxs/:address/:start/:length', function(req, res) {
     else
       req.params.min  = (req.params.min * 100000000);
 
-    db.get_address_txs_ajax(req.params.address, req.params.start, req.params.length, function(txs, count) {
+    db.get_address_txs_ajax(req.params.address, req.params.start, req.params.length, history_block, function(txs, count) {
       var data = [];
 
       for (i = 0; i < txs.length; i++) {

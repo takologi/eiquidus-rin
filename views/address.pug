@@ -3,6 +3,7 @@ extends layout
 block content
   script.
     var hashAddress = "#{address.a_id}";
+    var historyBlock = #{(history_block == null ? 'null' : history_block)};
     var setting_maxTxCount = parseInt("#{settings.api_page.public_apis.ext.getaddresstxs.max_items_per_query}");
     var setting_txPerPage = parseInt("#{settings.address_page.history_table.items_per_page}");
     var lengthMenuOptsAdd = !{JSON.stringify(settings.address_page.history_table.page_length_options)};
@@ -51,7 +52,7 @@ block content
         ajax: {
           url: '/ext/getaddresstxs/' + hashAddress,
           beforeSend: function(jqXHR, settings) {
-            settings.url = settings.url.substring(0, settings.url.indexOf('?')) + '/' + getParameterByName('start', settings.url) + '/' + getParameterByName('length', settings.url) + '/internal';
+            settings.url = settings.url.substring(0, settings.url.indexOf('?')) + '/' + getParameterByName('start', settings.url) + '/' + getParameterByName('length', settings.url) + '/internal' + (historyBlock == null ? '' : ('?history=' + historyBlock));
             return true;
           }
         },
@@ -119,7 +120,8 @@ block content
       if (#{settings.shared_pages.page_header.page_title_image.enable_animation} == true && #{settings.address_page.page_header.show_img} == true)
         startRotateElement('img#header-img');
     });
-  - var balance = Number((address.received - address.sent) / 100000000).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
+  - var rawBalance = (historical_balance == null ? (address.received - address.sent) : historical_balance);
+  - var balance = Number(rawBalance / 100000000).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
   - var balanceParts = balance.split('.');
   - var sent = Number(address.sent /100000000).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
   - var sentParts = sent.split('.');
@@ -132,6 +134,11 @@ block content
   if settings.shared_pages.table_header_bgcolor != null && settings.shared_pages.table_header_bgcolor != ''
     - theadClasses.push('table-' + settings.shared_pages.table_header_bgcolor);
   .col-xs-12.col-md-12
+    if history_error != null
+      .alert.alert-warning.alert-dismissible.fade.show(role='alert')
+        button.btn-close(type='button', data-bs-dismiss='alert')
+        span.fa-solid.fa-triangle-exclamation(style='margin-right:5px')
+        | #{history_error}
     if settings.address_page.page_header.show_img == true || settings.address_page.page_header.show_title == true || settings.address_page.page_header.show_description == true
       #page-header-container(style='align-items:' + (settings.address_page.page_header.show_img == true && settings.address_page.page_header.show_title == true && settings.address_page.page_header.show_description == true ? 'flex-start' : 'center'))
         if settings.address_page.page_header.show_img == true
@@ -139,7 +146,7 @@ block content
             img#header-img(src=(settings.shared_pages.page_header.page_title_image == null || settings.shared_pages.page_header.page_title_image.image_path == null || settings.shared_pages.page_header.page_title_image.image_path == '' ? '/img/page-title-img.png' : settings.shared_pages.page_header.page_title_image.image_path))
         #page-title-container
           if settings.address_page.page_header.show_title == true
-            h3#page-title #{settings.localization.a_title.replace('{1}', settings.coin.name)}
+            h3#page-title #{settings.localization.a_title.replace('{1}', settings.coin.name)}#{history_block_label == null ? '' : (' - History up to Block ' + history_block_label)}
           if settings.address_page.page_header.show_description == true
             if settings.address_page.page_header.show_title != true
               #page-title-container
@@ -180,8 +187,11 @@ block content
             th.text-center #{settings.localization.a_qr}
         tbody
           tr
-            td.text-center.addr-summary #{balanceParts[0]}.
+            td.text-center.addr-summary
+              span #{balanceParts[0]}.
               span.decimal #{balanceDecimal}
+              if history_block != null && historical_balance != null
+                div.text-warning.small.mt-1 WARNING! This is a balance from the history up to block #{history_block_label}
             if settings.address_page.show_sent_received == true
               td.text-center.addr-summary #{sentParts[0]}.
                 span.decimal #{sentDecimal}
