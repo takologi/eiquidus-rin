@@ -34,7 +34,7 @@ block content
       lengthMenuOpts.push(setting_walletsPerPage);
 
     $(document).ready(function() {
-      var sortableColumns = [0, 1, 2, 3, 4];
+      var sortableColumns = [0, 1, 2, 3, 4, 5, 6];
 
       if (lastUpdatedUnix > 0)
         $('span#lastUpdatedDate').html(' ' + format_unixtime(lastUpdatedUnix));
@@ -65,7 +65,7 @@ block content
         serverSide: true,
         iDisplayLength: setting_walletsPerPage,
         lengthMenu: lengthMenuOpts,
-        order: [[2, 'desc']],
+        order: [[3, 'desc']],
         columnDefs: [
           {
             targets: sortableColumns,
@@ -103,17 +103,23 @@ block content
         rowCallback: function(row, data, index) {
           const walletAddress = data[0];
           const txCount = data[1];
-          const walletBalance = Number(data[2]).toLocaleString('en', {'minimumFractionDigits':2, 'maximumFractionDigits':8, 'useGrouping':true});
+          const depositedValue = Number(data[2]).toLocaleString('en', {'minimumFractionDigits':2, 'maximumFractionDigits':8, 'useGrouping':true});
+          const depositedParts = depositedValue.split('.');
+          const walletBalance = Number(data[3]).toLocaleString('en', {'minimumFractionDigits':2, 'maximumFractionDigits':8, 'useGrouping':true});
           const balanceParts = walletBalance.split('.');
-          const lastTxTo = data[3];
-          const lastTxFrom = data[4];
+          const withdrawnValue = Number(data[4]).toLocaleString('en', {'minimumFractionDigits':2, 'maximumFractionDigits':8, 'useGrouping':true});
+          const withdrawnParts = withdrawnValue.split('.');
+          const lastTxTo = data[5];
+          const lastTxFrom = data[6];
           const historySuffix = (historyEnabled && historyBlock != null ? ('?history=' + historyBlock) : '');
 
           $("td:eq(0)", row).html('<a href="/address/' + walletAddress + historySuffix + '">' + walletAddress + '</a>').addClass('breakWord');
           $("td:eq(1)", row).html(Number(txCount).toLocaleString('en')).addClass('text-center');
-          $("td:eq(2)", row).html(balanceParts[0] + '.<span class="decimals decimal">' + format_decimal_with_spaces(balanceParts[1]) + '</span>').addClass('text-center');
-          $("td:eq(3)", row).html((lastTxTo > 0 ? ('<span' + (#{settings.shared_pages.date_time.enable_alt_timezone_tooltips} == true ? ' data-bs-toggle="tooltip" data-bs-placement="auto" title="' + format_unixtime(lastTxTo, true) + '"' : '') + '>' + format_unixtime(lastTxTo) + '</span>') : '-')).addClass('text-center');
-          $("td:eq(4)", row).html((lastTxFrom > 0 ? ('<span' + (#{settings.shared_pages.date_time.enable_alt_timezone_tooltips} == true ? ' data-bs-toggle="tooltip" data-bs-placement="auto" title="' + format_unixtime(lastTxFrom, true) + '"' : '') + '>' + format_unixtime(lastTxFrom) + '</span>') : '-')).addClass('text-center');
+          $("td:eq(2)", row).html(depositedParts[0] + '.<span class="decimals decimal">' + format_decimal_with_spaces(depositedParts[1]) + '</span>').addClass('text-center');
+          $("td:eq(3)", row).html(balanceParts[0] + '.<span class="decimals decimal">' + format_decimal_with_spaces(balanceParts[1]) + '</span>').addClass('text-center');
+          $("td:eq(4)", row).html(withdrawnParts[0] + '.<span class="decimals decimal">' + format_decimal_with_spaces(withdrawnParts[1]) + '</span>').addClass('text-center');
+          $("td:eq(5)", row).html((lastTxTo > 0 ? ('<span' + (#{settings.shared_pages.date_time.enable_alt_timezone_tooltips} == true ? ' data-bs-toggle="tooltip" data-bs-placement="auto" title="' + format_unixtime(lastTxTo, true) + '"' : '') + '>' + format_unixtime(lastTxTo) + '</span>') : '-')).addClass('text-center');
+          $("td:eq(6)", row).html((lastTxFrom > 0 ? ('<span' + (#{settings.shared_pages.date_time.enable_alt_timezone_tooltips} == true ? ' data-bs-toggle="tooltip" data-bs-placement="auto" title="' + format_unixtime(lastTxFrom, true) + '"' : '') + '>' + format_unixtime(lastTxFrom) + '</span>') : '-')).addClass('text-center');
         },
         fnDrawCallback: function(settings) {
           fixDataTableColumns();
@@ -233,7 +239,11 @@ block content
               tr(class=theadClasses)
                 th Wallet Address
                 th.text-center # of TXs
+                th.text-center Deposited
+                  span.small.fw-normal  (#{settings.coin.symbol})
                 th.text-center Balance
+                  span.small.fw-normal  (#{settings.coin.symbol})
+                th.text-center Withdrawn
                   span.small.fw-normal  (#{settings.coin.symbol})
                 th.text-center Last TX to Wallet
                 th.text-center Last TX from Wallet

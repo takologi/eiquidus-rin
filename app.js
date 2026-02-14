@@ -840,7 +840,9 @@ app.use('/ext/gethistorywallets/:start/:length', function(req, res) {
 
           row.push(rows[i]._id);
           row.push(rows[i].tx_count);
+          row.push(Number(rows[i].deposited / 100000000));
           row.push(Number(rows[i].balance / 100000000));
+          row.push(Number(rows[i].withdrawn / 100000000));
           row.push((rows[i].last_to_timestamp ? rows[i].last_to_timestamp : 0));
           row.push((rows[i].last_from_timestamp ? rows[i].last_from_timestamp : 0));
 
@@ -849,7 +851,9 @@ app.use('/ext/gethistorywallets/:start/:length', function(req, res) {
           data.push({
             address: rows[i]._id,
             tx_count: rows[i].tx_count,
+            deposited: Number(rows[i].deposited / 100000000),
             balance: Number(rows[i].balance / 100000000),
+            withdrawn: Number(rows[i].withdrawn / 100000000),
             last_to_timestamp: (rows[i].last_to_timestamp ? rows[i].last_to_timestamp : 0),
             last_from_timestamp: (rows[i].last_from_timestamp ? rows[i].last_from_timestamp : 0)
           });

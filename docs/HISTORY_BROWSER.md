@@ -208,6 +208,39 @@ Validation checklist for Phase 4:
    - repeat sorting checks and confirm order remains correct
    - confirm `history` mode remains active while paging/sorting
 
+### Phase 5 (implemented, pending validation)
+
+Add wallets-table columns:
+
+- `Deposited` (before `Balance`)
+- `Withdrawn` (after `Balance`)
+
+Implemented behavior:
+
+- Both columns are computed per wallet up to the currently active height:
+  - latest mode -> all synced history
+  - history mode -> `blockindex <= history`
+- `Deposited` sums positive wallet deltas.
+- `Withdrawn` sums absolute value of negative wallet deltas.
+- Both columns are sortable with the same desc-first/asc-second behavior.
+- Existing user-customized table labels remain unchanged.
+
+Implementation details:
+
+- `lib/database.js`
+  - Extended `get_history_wallets()` aggregation to compute `deposited` and `withdrawn` in the grouped wallet row.
+  - Added sort mapping for the new columns.
+- `app.js`
+  - Extended `/ext/gethistorywallets/:start/:length` response payload for both internal and public output.
+- `views/history_browser.pug`
+  - Added `Deposited` and `Withdrawn` table headers and render formatting.
+  - Updated DataTables sort column indexes and default balance sort index.
+
+Index note:
+
+- No new index was required for Phase 5.
+- Existing `addresstxes` compound index on `(blockindex, a_id, amount)` already supports the filtered aggregation path used by this page.
+
 ## Validation Checklist For Phase 1
 
 1. Open main page (`/`).
