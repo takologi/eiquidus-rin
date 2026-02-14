@@ -20,6 +20,7 @@ let database = 'index';
 let block_start = 1;
 let lockCreated = false;
 let stopSync = false;
+let exiting = false;
 
 const net = require('net');
 
@@ -87,6 +88,29 @@ process.on('SIGTERM', () => {
 
   blkSync.setStopSync(true);
   stopSync = true;
+});
+
+function handleFatalError(error, label) {
+  if (exiting)
+    return;
+
+  exiting = true;
+
+  if (error != null) {
+    console.log(`${label}: ${error && error.stack ? error.stack : error}`);
+  }
+
+  blkSync.setStopSync(true);
+  stopSync = true;
+  exit(1);
+}
+
+process.on('uncaughtException', (error) => {
+  handleFatalError(error, 'Uncaught exception');
+});
+
+process.on('unhandledRejection', (reason) => {
+  handleFatalError(reason, 'Unhandled rejection');
 });
 
 // displays usage and exits
@@ -1355,7 +1379,10 @@ else
 // check if this sync option is already running/locked
 if (lib.is_locked([database]) == false) {
   // create a new sync lock before checking the rest of the locks to minimize problems with running scripts at the same time
-  lib.create_lock(database);
+  if (lib.create_lock(database) !== true) {
+    console.log(`Error: Unable to create ${database} lock`);
+    process.exit(1);
+  }
   // ensure the lock will be deleted on exit
   lockCreated = true;
   // check the backup, restore and delete locks since those functions would be problematic when updating data
@@ -1705,11 +1732,47 @@ if (lib.is_locked([database]) == false) {
                           lib.get_geo_location(address, function(error, geo) {
                             // check if an error was returned
                             if (error) {
-                              console.log(error);
-                              exit(1);
+                              console.log(`Warning: geolocation lookup failed for ${address}: ${error.message || error}`);
+
+                              // preserve peer even when geolocation provider is unavailable
+                              newPeers.forEach(function (newPeer) {
+                                newPeer.country = 'Unknown';
+                                newPeer.country_code = 'unknown';
+                              });
+
+                              // add peers to peer array
+                              peerList = peerList.concat(newPeers);
+                              console.log('Add new peer %s%s [%s/%s] (geo fallback)', address, (port == null || port == '' ? '' : ':' + port.toString()), (i + 1).toString(), body.length.toString());
+
+                              // check if the script is stopping
+                              if (stopSync) {
+                                // stop the loop
+                                loop({});
+                              } else {
+                                // move to next peer
+                                loop();
+                              }
                             } else if (geo == null || typeof geo != 'object') {
-                              console.log(`Error: geolocation api returned unexpected results for ip address ${address}`);
-                              exit(1);
+                              console.log(`Warning: geolocation api returned unexpected results for ip address ${address}`);
+
+                              // preserve peer even when geolocation provider returns unexpected payload
+                              newPeers.forEach(function (newPeer) {
+                                newPeer.country = 'Unknown';
+                                newPeer.country_code = 'unknown';
+                              });
+
+                              // add peers to peer array
+                              peerList = peerList.concat(newPeers);
+                              console.log('Add new peer %s%s [%s/%s] (geo fallback)', address, (port == null || port == '' ? '' : ':' + port.toString()), (i + 1).toString(), body.length.toString());
+
+                              // check if the script is stopping
+                              if (stopSync) {
+                                // stop the loop
+                                loop({});
+                              } else {
+                                // move to next peer
+                                loop();
+                              }
                             } else {
                                // add the geolocation data to the new peer record(s)
                               newPeers.forEach(function (newPeer) {

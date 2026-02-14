@@ -22,6 +22,7 @@ console.log('=== Dashboard Update Script ===');
 
 const lockPath = path.join(__dirname, '..', 'tmp', 'update_dashboard.lock');
 let lockFd = null;
+let shuttingDown = false;
 
 function releaseLock() {
   if (lockFd !== null) {
@@ -41,27 +42,96 @@ function releaseLock() {
   }
 }
 
-try {
-  lockFd = fs.openSync(lockPath, 'wx');
-  fs.writeFileSync(lockFd, `${process.pid}`);
-} catch (err) {
-  if (err.code === 'EEXIST') {
-    console.log('Another update_dashboard instance is already running. Exiting.');
-    process.exit(0);
+function isProcessRunning(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    // EPERM means the process exists but is not signalable by this user
+    return error != null && error.code === 'EPERM';
   }
-
-  console.error('Failed to acquire dashboard update lock:', err.message);
-  process.exit(1);
 }
+
+function connectAndExit(exitCode) {
+  if (shuttingDown)
+    return;
+
+  shuttingDown = true;
+  releaseLock();
+
+  // attempt to close mongoose connection if open, but always exit
+  Promise.resolve()
+    .then(() => mongoose.connection.close())
+    .catch(() => {})
+    .finally(() => process.exit(exitCode));
+}
+
+function acquireDashboardLock() {
+  try {
+    lockFd = fs.openSync(lockPath, 'wx');
+    fs.writeFileSync(lockFd, `${process.pid}`);
+    return true;
+  } catch (err) {
+    if (err.code !== 'EEXIST') {
+      console.error('Failed to acquire dashboard update lock:', err.message);
+      return false;
+    }
+
+    let activePid = null;
+
+    try {
+      const pidText = fs.readFileSync(lockPath, 'utf8').trim();
+      activePid = parseInt(pidText, 10);
+    } catch (readErr) {
+      // continue and treat unreadable file as stale lock below
+    }
+
+    if (Number.isInteger(activePid) && activePid > 0 && isProcessRunning(activePid)) {
+      console.log('Another update_dashboard instance is already running. Exiting.');
+      return false;
+    }
+
+    try {
+      fs.unlinkSync(lockPath);
+      console.log('Removed stale update_dashboard lock file.');
+    } catch (unlinkErr) {
+      console.log('Another update_dashboard instance is already running. Exiting.');
+      return false;
+    }
+
+    try {
+      lockFd = fs.openSync(lockPath, 'wx');
+      fs.writeFileSync(lockFd, `${process.pid}`);
+      return true;
+    } catch (retryErr) {
+      if (retryErr.code === 'EEXIST') {
+        console.log('Another update_dashboard instance is already running. Exiting.');
+        return false;
+      }
+
+      console.error('Failed to acquire dashboard update lock:', retryErr.message);
+      return false;
+    }
+  }
+}
+
+if (!acquireDashboardLock())
+  process.exit(0);
 
 process.on('exit', releaseLock);
 process.on('SIGINT', () => {
-  releaseLock();
-  process.exit(1);
+  connectAndExit(1);
 });
 process.on('SIGTERM', () => {
-  releaseLock();
-  process.exit(1);
+  connectAndExit(1);
+});
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught exception:', error && error.stack ? error.stack : error);
+  connectAndExit(1);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason && reason.stack ? reason.stack : reason);
+  connectAndExit(1);
 });
 
 // Build connection string
