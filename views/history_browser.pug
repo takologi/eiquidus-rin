@@ -35,6 +35,7 @@ block content
 
     $(document).ready(function() {
       var sortableColumns = [0, 1, 2, 3, 4, 5, 6];
+      var valueAlignClass = get_value_align_class();
 
       if (lastUpdatedUnix > 0)
         $('span#lastUpdatedDate').html(' ' + format_unixtime(lastUpdatedUnix));
@@ -103,21 +104,18 @@ block content
         rowCallback: function(row, data, index) {
           const walletAddress = data[0];
           const txCount = data[1];
-          const depositedValue = Number(data[2]).toLocaleString('en', {'minimumFractionDigits':2, 'maximumFractionDigits':8, 'useGrouping':true});
-          const depositedParts = depositedValue.split('.');
-          const walletBalance = Number(data[3]).toLocaleString('en', {'minimumFractionDigits':2, 'maximumFractionDigits':8, 'useGrouping':true});
-          const balanceParts = walletBalance.split('.');
-          const withdrawnValue = Number(data[4]).toLocaleString('en', {'minimumFractionDigits':2, 'maximumFractionDigits':8, 'useGrouping':true});
-          const withdrawnParts = withdrawnValue.split('.');
+          const depositedParts = format_number_parts_for_display(data[2], {'minimumFractionDigits':2, 'maximumFractionDigits':8, 'useGrouping':true});
+          const balanceParts = format_number_parts_for_display(data[3], {'minimumFractionDigits':2, 'maximumFractionDigits':8, 'useGrouping':true});
+          const withdrawnParts = format_number_parts_for_display(data[4], {'minimumFractionDigits':2, 'maximumFractionDigits':8, 'useGrouping':true});
           const lastTxTo = data[5];
           const lastTxFrom = data[6];
           const historySuffix = (historyEnabled && historyBlock != null ? ('?history=' + historyBlock) : '');
 
           $("td:eq(0)", row).html('<a href="/address/' + walletAddress + historySuffix + '">' + walletAddress + '</a>').addClass('breakWord');
-          $("td:eq(1)", row).html(Number(txCount).toLocaleString('en')).addClass('text-center');
-          $("td:eq(2)", row).html(depositedParts[0] + '.<span class="decimals decimal">' + format_decimal_with_spaces(depositedParts[1]) + '</span>').addClass('text-center');
-          $("td:eq(3)", row).html(balanceParts[0] + '.<span class="decimals decimal">' + format_decimal_with_spaces(balanceParts[1]) + '</span>').addClass('text-center');
-          $("td:eq(4)", row).html(withdrawnParts[0] + '.<span class="decimals decimal">' + format_decimal_with_spaces(withdrawnParts[1]) + '</span>').addClass('text-center');
+          $("td:eq(1)", row).html(Number(txCount).toLocaleString('en')).addClass(valueAlignClass);
+          $("td:eq(2)", row).html((depositedParts.hasDecimal ? (depositedParts.integer + '.<span class="decimals decimal">' + format_decimal_with_spaces(depositedParts.decimal) + '</span>') : depositedParts.integer)).addClass(valueAlignClass);
+          $("td:eq(3)", row).html((balanceParts.hasDecimal ? (balanceParts.integer + '.<span class="decimals decimal">' + format_decimal_with_spaces(balanceParts.decimal) + '</span>') : balanceParts.integer)).addClass(valueAlignClass);
+          $("td:eq(4)", row).html((withdrawnParts.hasDecimal ? (withdrawnParts.integer + '.<span class="decimals decimal">' + format_decimal_with_spaces(withdrawnParts.decimal) + '</span>') : withdrawnParts.integer)).addClass(valueAlignClass);
           $("td:eq(5)", row).html((lastTxTo > 0 ? ('<span' + (#{settings.shared_pages.date_time.enable_alt_timezone_tooltips} == true ? ' data-bs-toggle="tooltip" data-bs-placement="auto" title="' + format_unixtime(lastTxTo, true) + '"' : '') + '>' + format_unixtime(lastTxTo) + '</span>') : '-')).addClass('text-center');
           $("td:eq(6)", row).html((lastTxFrom > 0 ? ('<span' + (#{settings.shared_pages.date_time.enable_alt_timezone_tooltips} == true ? ' data-bs-toggle="tooltip" data-bs-placement="auto" title="' + format_unixtime(lastTxFrom, true) + '"' : '') + '>' + format_unixtime(lastTxFrom) + '</span>') : '-')).addClass('text-center');
         },
@@ -204,11 +202,17 @@ block content
               i.fas.fa-chart-line.me-2
               | Difficulty
             hr
-            - var difficultyValue = Number(data.difficulty || 0).toFixed(8);
+            - var configuredCoinDecimals = (settings.coin.decimals == null || isNaN(settings.coin.decimals) || Number(settings.coin.decimals) < 0 ? -1 : Math.min(8, parseInt(settings.coin.decimals)));
+            - var difficultyPrecision = (configuredCoinDecimals == -1 ? 8 : configuredCoinDecimals);
+            - var difficultyValue = Number(data.difficulty || 0).toFixed(difficultyPrecision);
             - var difficultyParts = difficultyValue.split('.');
-            - var difficultyDecimal = difficultyParts[1].replace(/(\d{3})/g, '$1 ').trim();
-            p.h4.mb-0 #{difficultyParts[0]}.
-              span.decimal #{difficultyDecimal}
+            p.h4.mb-0(class=(configuredCoinDecimals == -1 ? 'text-center' : 'text-end'))
+              if difficultyParts.length > 1
+                - var difficultyDecimal = difficultyParts[1].replace(/(\d{3})/g, '$1 ').trim();
+                | #{difficultyParts[0]}.
+                span.decimal #{difficultyDecimal}
+              else
+                | #{difficultyParts[0]}
       .col-xl-3.col-lg-4.col-md-6
         .card.h-100
           .card-body
@@ -216,7 +220,7 @@ block content
               i.fas.fa-coins.me-2
               | Total Supply
             hr
-            p.h4.mb-0= Number(data.totalSupply || 0).toLocaleString() + ' ' + settings.coin.symbol
+            p.h4.mb-0(class=(configuredCoinDecimals == -1 ? 'text-center' : 'text-end'))= Number(data.totalSupply || 0).toLocaleString() + ' ' + settings.coin.symbol
       .col-xl-3.col-lg-4.col-md-6
         .card.h-100
           .card-body
@@ -224,7 +228,7 @@ block content
               i.fas.fa-exchange-alt.me-2
               | Total Transactions
             hr
-            p.h4.mb-0= Number(data.totalTxCount || 0).toLocaleString()
+            p.h4.mb-0(class=(configuredCoinDecimals == -1 ? 'text-center' : 'text-end'))= Number(data.totalTxCount || 0).toLocaleString()
 
     .row.mt-4
       .col-12

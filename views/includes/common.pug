@@ -1,6 +1,51 @@
 script(type='text/javascript', src='https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?version=4.8.0&features=Intl')
 script(type='text/javascript', src='https://cdn.jsdelivr.net/npm/luxon@3.4.3/build/global/luxon.min.js')
 script.
+  const configuredCoinDecimals = #{(settings.coin.decimals == null || isNaN(settings.coin.decimals) ? -1 : Number(settings.coin.decimals))};
+
+  function get_display_decimals() {
+    const parsed = parseInt(configuredCoinDecimals);
+
+    if (isNaN(parsed) || parsed < 0)
+      return null;
+    else if (parsed > 8)
+      return 8;
+    else
+      return parsed;
+  }
+
+  function format_number_for_display(value, options) {
+    const displayDecimals = get_display_decimals();
+    const opts = {
+      minimumFractionDigits: (options && options.minimumFractionDigits != null ? options.minimumFractionDigits : 2),
+      maximumFractionDigits: (options && options.maximumFractionDigits != null ? options.maximumFractionDigits : 8),
+      useGrouping: (options && options.useGrouping != null ? options.useGrouping : true)
+    };
+
+    if (displayDecimals != null) {
+      opts.minimumFractionDigits = displayDecimals;
+      opts.maximumFractionDigits = displayDecimals;
+    }
+
+    return Number((value == null || value === '' || isNaN(value) ? 0 : value)).toLocaleString('en', opts);
+  }
+
+  function format_number_parts_for_display(value, options) {
+    const formatted = format_number_for_display(value, options);
+    const parts = formatted.split('.');
+
+    return {
+      full: formatted,
+      integer: (parts.length > 0 ? parts[0] : formatted),
+      decimal: (parts.length > 1 ? parts[1] : ''),
+      hasDecimal: (parts.length > 1)
+    };
+  }
+
+  function get_value_align_class() {
+    return (get_display_decimals() == null ? 'text-center' : 'text-end');
+  }
+
   function format_unixtime(unixtime, alt) {
     if (alt == null)
       alt = false;

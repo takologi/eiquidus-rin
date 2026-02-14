@@ -241,6 +241,46 @@ Index note:
 - No new index was required for Phase 5.
 - Existing `addresstxes` compound index on `(blockindex, a_id, amount)` already supports the filtered aggregation path used by this page.
 
+### Phase 6 (implemented)
+
+Scope:
+
+- Fix History Browser difficulty showing as zero in historical mode.
+- Add new `coin.decimals` setting to control displayed decimal precision for price/balance/value outputs.
+
+Implemented behavior:
+
+- History difficulty fallback order now resolves more robustly:
+  1. `dashboard_block_stats.difficulty` if non-zero
+  2. `networkhistory` at/under selected height with POW/POS cross-fallback
+  3. RPC `getblock` difficulty for the selected historical block hash
+- New `coin.decimals` setting:
+  - `-1` or unset => keep legacy display behavior per page
+  - `0..8` => force fixed decimal digits to that value (rounded and zero-padded)
+  - `>8` => clamped to `8`
+- Display formatting only is affected; underlying calculations continue to use full precision values.
+
+Implementation details:
+
+- `lib/database.js`
+  - Enhanced `get_history_browser_overview()` difficulty resolution logic with block-level RPC fallback.
+- `lib/settings.js`
+  - Added default `coin.decimals` and loader sanitization/clamping.
+- `settings.json.template` / `settings.json`
+  - Added documented `coin.decimals` setting.
+- `views/includes/common.pug`
+  - Added shared display format helpers honoring `coin.decimals`.
+- `views/layout.pug`, `views/history_browser.pug`, `views/address.pug`, `views/index.pug`, `views/movement.pug`
+  - Wired key displayed price/balance/value formatting to the shared helper and safe zero-decimal rendering.
+
+Follow-up updates:
+
+- Applied alignment behavior for displayed numeric table values:
+  - `coin.decimals` set (`0..8`) => right-aligned (`.text-end`)
+  - `coin.decimals` unset or `-1` => centered (`.text-center`)
+- Configuration sync correction:
+  - Added `coin.decimals` entries to `settings.json` and `settings.json.template` files (JSON configs) in both test and production projects.
+
 ## Validation Checklist For Phase 1
 
 1. Open main page (`/`).

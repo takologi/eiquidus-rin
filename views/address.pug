@@ -38,6 +38,7 @@ block content
       var displayLengthMax = setting_txPerPage;
     }
     $(document).ready(function () {
+      var valueAlignClass = get_value_align_class();
       var rtable = $('#address-txs').dataTable({
         autoWidth: true,
         searching: false,
@@ -67,8 +68,7 @@ block content
           var txhash = data[1]; //variables for better readability
           var out = data[2]; //variables for better readability
           var vin = data[3]; //variables for better readability
-          var balance = data[4].toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true}); //variables for better readability
-          var balanceParts = balance.split('.');
+          var balanceParts = format_number_parts_for_display(data[4], {'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true}); //variables for better readability
           $("td:eq(0)", row).html('<a href="/tx/' + txhash + '"><span class="fa-regular fa-eye" data-bs-toggle="tooltip" data-bs-placement="top" title="#{settings.localization.view_tx}"></span></a>').addClass('text-center d-table-cell d-md-none');
           $("td:eq(1)", row).html('<a href="/tx/' + txhash + '">' + txhash + '</a>').addClass('breakWord d-none d-md-table-cell');
           var amount = 0;
@@ -78,26 +78,25 @@ block content
           if (out > 0 && vin > 0) {
             amount = Number(out - vin);
             if (amount < 0) {
-              amount = Number(amount * -1).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
+              amount = format_number_parts_for_display((amount * -1), {'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
               updown = '-';
             } else if (amount > 0) {
-              amount = amount.toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
+              amount = format_number_parts_for_display(amount, {'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
               updown = '+';
             } else {
-              amount = amount.toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
+              amount = format_number_parts_for_display(amount, {'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
             }
           } else if (out > 0) {
-            amount = Number(out).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
+            amount = format_number_parts_for_display(out, {'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
             updown = '+';
             rowclass = 'table-success';
           } else {
-            amount = Number(vin).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
+            amount = format_number_parts_for_display(vin, {'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
             updown = '-';
             rowclass = 'table-danger';
           }
-          var amountParts = amount.split('.');
-          $("td:eq(2)", row).html(updown + amountParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(amountParts[1]) + '</span>').addClass(rowclass + ' text-center');
-          $("td:eq(3)", row).html(balanceParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(balanceParts[1]) + '</span>').addClass('text-center');
+          $("td:eq(2)", row).html(updown + (amount.hasDecimal ? (amount.integer + '.<span class="decimal">' + format_decimal_with_spaces(amount.decimal) + '</span>') : amount.integer)).addClass(rowclass + ' ' + valueAlignClass);
+          $("td:eq(3)", row).html((balanceParts.hasDecimal ? (balanceParts.integer + '.<span class="decimal">' + format_decimal_with_spaces(balanceParts.decimal) + '</span>') : balanceParts.integer)).addClass(valueAlignClass);
           $("td:eq(4)", row).html('<span' + (#{settings.shared_pages.date_time.enable_alt_timezone_tooltips} == true ? ' data-bs-toggle="tooltip" data-bs-placement="auto" title="' + format_unixtime(timestamp, true) + '"' : '') + '>' + format_unixtime(timestamp) + '</span>').addClass('text-center');
         },
         fnDrawCallback: function(settings) {
@@ -121,17 +120,20 @@ block content
         startRotateElement('img#header-img');
     });
   - var rawBalance = (historical_summary == null || historical_summary.balance == null ? (address.received - address.sent) : historical_summary.balance);
-  - var balance = Number(rawBalance / 100000000).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
+  - var configuredCoinDecimals = (settings.coin.decimals == null || isNaN(settings.coin.decimals) || Number(settings.coin.decimals) < 0 ? -1 : Math.min(8, parseInt(settings.coin.decimals)));
+  - var displayMinMax = (configuredCoinDecimals == -1 ? null : configuredCoinDecimals);
+  - var valueAlignClass = (configuredCoinDecimals == -1 ? 'text-center' : 'text-end');
+  - var balance = Number(rawBalance / 100000000).toLocaleString('en',{'minimumFractionDigits':(displayMinMax == null ? 2 : displayMinMax),'maximumFractionDigits':(displayMinMax == null ? 8 : displayMinMax),'useGrouping':true});
   - var balanceParts = balance.split('.');
   - var rawSent = (historical_summary == null || historical_summary.sent == null ? address.sent : historical_summary.sent);
-  - var sent = Number(rawSent /100000000).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
+  - var sent = Number(rawSent /100000000).toLocaleString('en',{'minimumFractionDigits':(displayMinMax == null ? 2 : displayMinMax),'maximumFractionDigits':(displayMinMax == null ? 8 : displayMinMax),'useGrouping':true});
   - var sentParts = sent.split('.');
   - var rawReceived = (historical_summary == null || historical_summary.received == null ? address.received : historical_summary.received);
-  - var received = Number(rawReceived / 100000000).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
+  - var received = Number(rawReceived / 100000000).toLocaleString('en',{'minimumFractionDigits':(displayMinMax == null ? 2 : displayMinMax),'maximumFractionDigits':(displayMinMax == null ? 8 : displayMinMax),'useGrouping':true});
   - var receivedParts = received.split('.');
-  - var balanceDecimal = balanceParts[1].replace(/(\d{3})/g, '$1 ').trim();
-  - var sentDecimal = sentParts[1].replace(/(\d{3})/g, '$1 ').trim();
-  - var receivedDecimal = receivedParts[1].replace(/(\d{3})/g, '$1 ').trim();
+  - var balanceDecimal = (balanceParts[1] ? balanceParts[1].replace(/(\d{3})/g, '$1 ').trim() : '');
+  - var sentDecimal = (sentParts[1] ? sentParts[1].replace(/(\d{3})/g, '$1 ').trim() : '');
+  - var receivedDecimal = (receivedParts[1] ? receivedParts[1].replace(/(\d{3})/g, '$1 ').trim() : '');
   - var theadClasses = [];
   if settings.shared_pages.table_header_bgcolor != null && settings.shared_pages.table_header_bgcolor != ''
     - theadClasses.push('table-' + settings.shared_pages.table_header_bgcolor);
@@ -189,17 +191,28 @@ block content
             th.text-center #{settings.localization.a_qr}
         tbody
           tr
-            td.text-center.addr-summary
-              span #{balanceParts[0]}.
-              span.decimal #{balanceDecimal}
+            td(class=valueAlignClass + ' addr-summary')
+              if balanceParts.length > 1
+                span #{balanceParts[0]}.
+                span.decimal #{balanceDecimal}
+              else
+                span #{balanceParts[0]}
               if history_block != null && historical_summary != null
                 div.text-warning.small.mt-1 WARNING! This is a balance from the history up to block #{history_block_label}
             if settings.address_page.show_sent_received == true
-              td.text-center.addr-summary #{sentParts[0]}.
-                span.decimal #{sentDecimal}
+              td(class=valueAlignClass + ' addr-summary')
+                if sentParts.length > 1
+                  | #{sentParts[0]}.
+                  span.decimal #{sentDecimal}
+                else
+                  | #{sentParts[0]}
             if settings.address_page.show_sent_received == true
-              td.text-center.addr-summary #{receivedParts[0]}.
-                span.decimal #{receivedDecimal}
+              td(class=valueAlignClass + ' addr-summary')
+                if receivedParts.length > 1
+                  | #{receivedParts[0]}.
+                  span.decimal #{receivedDecimal}
+                else
+                  | #{receivedParts[0]}
             td.text-center.addr-summary
               img.qrcode(src='/qr/' + address.a_id)
     .card.card-default.border-0.cardSpacer

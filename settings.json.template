@@ -82,7 +82,10 @@
     //         If omitted, the explorer will automatically fall back to "coin.name" for backward compatibility.
     "dbname": "Exor",
     // symbol: The cryptocurrency coin ticker/symbol value. This value is displayed anywhere that coin data is displayed including the index, address, block, movement, reward, richlist/top100 and tx pages
-    "symbol": "EXOR"
+    "symbol": "EXOR",
+    // decimals: Number of decimal places used when displaying price/balance/value fields
+    //           Set to -1 to keep legacy behavior per page, set 0-8 to force fixed decimal display, values > 8 are clamped to 8
+    "decimals": -1
   },
 
   // network_history: a collection of settings that controls saving of extra historical network data during a block sync

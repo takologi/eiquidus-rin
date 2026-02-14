@@ -422,6 +422,16 @@ html(lang='en')
             }
           }
         }
+
+        function toDecimalHtml(formattedValue) {
+          const splitParts = formattedValue.split('.');
+
+          if (splitParts.length > 1)
+            return splitParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(splitParts[1]) + '</span>';
+          else
+            return splitParts[0];
+        }
+
         function update_stats() {
           const summary_headers = {
             Accept: 'application/json, text/javascript, */*; q=0.01'
@@ -448,33 +458,29 @@ html(lang='en')
             let splitValue, splitParts;
 
             if (!isNaN(json.difficulty))
-              diffString = Number(json.difficulty).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
+              diffString = format_number_for_display(json.difficulty, {'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
             if (!isNaN(json.supply))
               supplyString = parseInt(parseFloat(json.supply).toFixed(0)).toLocaleString('en');
             if (!isNaN(json.hashrate))
-              hashrateString = Number(json.hashrate).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
+              hashrateString = format_number_for_display(json.hashrate, {'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
 
             $("#supply").text(supplyString);
             showTopPanelData('supplypanel', 'supplyPanelLoading');
 
-            splitValue = Number(parseFloat(json.lastPrice).toFixed(8) * parseInt(parseFloat(json.supply).toFixed(0))).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
-            splitParts = splitValue.split('.');
-            $("#marketCap").html(splitParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(splitParts[1]) + '</span>');
+            splitValue = format_number_for_display((Number(json.lastPrice) * Number(json.supply)), {'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
+            $("#marketCap").html(toDecimalHtml(splitValue));
             showTopPanelData('marketCapPanel', 'marketCapPanelLoading');
 
-            splitValue = Number(parseFloat(json.lastUSDPrice).toFixed(8) * parseInt(parseFloat(json.supply).toFixed(0))).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
-            splitParts = splitValue.split('.');
-            $("#usdMarketCap").html(splitParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(splitParts[1]) + '</span>');
+            splitValue = format_number_for_display((Number(json.lastUSDPrice) * Number(json.supply)), {'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
+            $("#usdMarketCap").html(toDecimalHtml(splitValue));
             showTopPanelData('usdMarketCapPanel', 'usdMarketCapPanelLoading');
 
-            splitParts = diffString.split('.');
-            $("#difficulty").html(splitParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(splitParts[1]) + '</span>');
+            $("#difficulty").html(toDecimalHtml(diffString));
 
             if (json.difficultyHybrid == null || json.difficultyHybrid == '')
               $("#difficultyHybrid").html('-');
             else {
-              splitParts = json.difficultyHybrid.split('.');
-              $("#difficultyHybrid").html(splitParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(splitParts[1]) + '</span>');
+              $("#difficultyHybrid").html(toDecimalHtml(json.difficultyHybrid));
             }
 
             showTopPanelData('difficultypanel', 'difficultyPanelLoading');
@@ -482,19 +488,16 @@ html(lang='en')
             if (hashrateString == null || hashrateString == '' || hashrateString == '-')
               $("#hashrate").html('-');
             else {
-              splitParts = hashrateString.split('.');
-              $("#hashrate").html(splitParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(splitParts[1]) + '</span>');
+              $("#hashrate").html(toDecimalHtml(hashrateString));
             }
             showTopPanelData('hashratepanel', 'hashratePanelLoading');
 
-            splitValue = Number(json.lastPrice).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
-            splitParts = splitValue.split('.');
-            $("#lastPrice").html(splitParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(splitParts[1]) + '</span>');
+            splitValue = format_number_for_display(json.lastPrice, {'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
+            $("#lastPrice").html(toDecimalHtml(splitValue));
             showTopPanelData('pricepanel', 'pricePanelLoading');
 
-            splitValue = Number(json.lastUSDPrice).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
-            splitParts = splitValue.split('.');
-            $("#lastUSDPrice").html(splitParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(splitParts[1]) + '</span>');
+            splitValue = format_number_for_display(json.lastUSDPrice, {'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
+            $("#lastUSDPrice").html(toDecimalHtml(splitValue));
             showTopPanelData('usdpricepanel', 'usdPricePanelLoading');
           }});
         }

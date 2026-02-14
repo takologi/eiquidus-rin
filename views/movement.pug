@@ -35,6 +35,7 @@ block content
     else
       var displayLengthMax = setting_txPerPage;
     $(document).ready(function() {
+      var valueAlignClass = get_value_align_class();
       var rtable = $('#movement-table').dataTable({
         autoWidth: true,
         searching: false,
@@ -64,14 +65,14 @@ block content
           var txhash = data[2]; //variables for better readability
           var outputs = data[3]; //variables for better readability
           var amount = data[4]; //variables for better readability
-          var amountParts = Number(amount).toLocaleString('en',{'minimumIntegerDigits':6, 'minimumFractionDigits':8,'maximumFractionDigits':8,'useGrouping':true}).split('.');
-          amountParts[0] = amountParts[0].replace(/^[0,]+/, match => '&nbsp;'.repeat(match.length));
-          var amountStr = amountParts[0] + '.<span class="decimal">' + format_decimal_with_spaces(amountParts[1]) + '&nbsp;</span>';
+          var amountParts = format_number_parts_for_display(amount, {'minimumIntegerDigits':6, 'minimumFractionDigits':8,'maximumFractionDigits':8,'useGrouping':true});
+          amountParts.integer = amountParts.integer.replace(/^[0,]+/, match => '&nbsp;'.repeat(match.length));
+          var amountStr = (amountParts.hasDecimal ? (amountParts.integer + '.<span class="decimal">' + format_decimal_with_spaces(amountParts.decimal) + '&nbsp;</span>') : amountParts.integer);
           var timestamp = data[5]; //variables for better readability
           var total = "<label class='badge bg-" + (amount > '#{settings.movement_page.movement_table.high_warning_flag}' ? 'danger' : (amount > '#{settings.movement_page.movement_table.low_warning_flag}' ? 'warning' : 'success')) + "' style='margin-bottom:0;'>" + amountStr + "</label>";
           $("td:eq(0)", row).html('<a href="/tx/' + txhash + '"><span class="fa-regular fa-eye" data-bs-toggle="tooltip" data-bs-placement="top" title="#{settings.localization.view_tx}"></span></a>').addClass('text-center d-table-cell d-md-none');
           $("td:eq(1)", row).html('<a href="/tx/' + txhash + '">' + txhash + '</a>').addClass('breakWord d-none d-md-table-cell');
-          $("td:eq(2)", row).html(total).addClass('text-center');
+          $("td:eq(2)", row).html(total).addClass(valueAlignClass);
           $("td:eq(3)", row).html('<span' + (#{settings.shared_pages.date_time.enable_alt_timezone_tooltips} == true ? ' data-bs-toggle="tooltip" data-bs-placement="auto" title="' + format_unixtime(timestamp, true) + '"' : '') + '>' + format_unixtime(timestamp) + '</span>').addClass('text-center');
         },
         fnDrawCallback: function(settings) {
