@@ -152,6 +152,26 @@ function get_last_updated_date(show_last_updated, last_updated_field, cb) {
   }
 }
 
+function format_utc_timestamp(timestamp) {
+  if (timestamp == null || isNaN(timestamp))
+    return null;
+
+  const dt = new Date(Number(timestamp) * 1000);
+
+  if (isNaN(dt.getTime()))
+    return null;
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const day = String(dt.getUTCDate()).padStart(2, '0');
+  const month = months[dt.getUTCMonth()];
+  const year = dt.getUTCFullYear();
+  const hours = String(dt.getUTCHours()).padStart(2, '0');
+  const minutes = String(dt.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(dt.getUTCSeconds()).padStart(2, '0');
+
+  return `${month} ${day}, ${year} ${hours}:${minutes}:${seconds} UTC`;
+}
+
 function get_block_data_from_wallet(block, res, orphan) {
   var ntxs = [];
 
@@ -359,26 +379,6 @@ function route_get_txlist(res, error) {
 }
 
 function route_get_address(res, hash, history_param) {
-  function format_history_timestamp(timestamp) {
-    if (timestamp == null || isNaN(timestamp))
-      return null;
-
-    const dt = new Date(Number(timestamp) * 1000);
-
-    if (isNaN(dt.getTime()))
-      return null;
-
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const day = String(dt.getUTCDate()).padStart(2, '0');
-    const month = months[dt.getUTCMonth()];
-    const year = dt.getUTCFullYear();
-    const hours = String(dt.getUTCHours()).padStart(2, '0');
-    const minutes = String(dt.getUTCMinutes()).padStart(2, '0');
-    const seconds = String(dt.getUTCSeconds()).padStart(2, '0');
-
-    return `${month} ${day}, ${year} ${hours}:${minutes}:${seconds} UTC`;
-  }
-
   function get_history_data(cb) {
     if (history_param == null || history_param.toString().trim() == '')
       return cb(null, null, null);
@@ -403,7 +403,7 @@ function route_get_address(res, hash, history_param) {
           if (!block || block == `${settings.localization.ex_error}: ${settings.localization.check_console}` || block.time == null)
             return cb(null, 'Invalid history block height. Showing latest blockchain state.', null);
 
-          return cb(requested_history_block, null, format_history_timestamp(block.time));
+          return cb(requested_history_block, null, format_utc_timestamp(block.time));
         });
       });
     });
@@ -562,6 +562,61 @@ router.get('/dashboard', function(req, res) {
       });
     }
     });
+  });
+});
+
+router.get('/history-browser', function(req, res) {
+  const history_enabled = (req.query.history_enabled != null && req.query.history_enabled.toString() == '1');
+  const requested_history = (history_enabled && req.query.history != null && /^\d+$/.test(req.query.history.toString().trim()) ? Number(req.query.history) : null);
+  let history_error = null;
+
+  if (history_enabled && requested_history == null)
+    history_error = 'Invalid history block height. Showing latest blockchain state.';
+
+  db.get_history_browser_overview(requested_history, function(overview) {
+    if (!overview) {
+      return res.render(
+        'error',
+        {
+          active: 'history-browser',
+          message: 'Unable to load history browser data',
+          showSync: db.check_show_sync_message(),
+          customHash: get_custom_hash(),
+          styleHash: get_style_hash(),
+          themeHash: get_theme_hash(),
+          page_title_prefix: settings.coin.name + ' History Browser'
+        }
+      );
+    }
+
+    if (history_enabled && requested_history != null && overview.is_historical != true)
+      history_error = 'Invalid history block height. Showing latest blockchain state.';
+
+    const effective_history_block = (history_enabled && overview.is_historical == true ? overview.effective_height : null);
+    const history_input_value = (history_enabled && requested_history != null ? requested_history : overview.current_height);
+    const history_timestamp_text = (effective_history_block != null ? format_utc_timestamp(overview.latestBlockTime) : format_utc_timestamp(overview.lastUpdated));
+    const history_block_label = (effective_history_block != null ? ('#' + effective_history_block + (history_timestamp_text == null ? '' : ' (' + history_timestamp_text + ')')) : null);
+    const page_title_suffix = (history_block_label != null ? (' - History up to Block ' + history_block_label) : '');
+
+    res.render(
+      'history_browser',
+      {
+        active: 'history-browser',
+        data: overview,
+        history_enabled: history_enabled,
+        history_block: effective_history_block,
+        history_block_label: history_block_label,
+        history_input_value: history_input_value,
+        history_timestamp_text: history_timestamp_text,
+        history_error: history_error,
+        last_updated: overview.lastUpdated,
+        showSync: db.check_show_sync_message(),
+        customHash: get_custom_hash(),
+        styleHash: get_style_hash(),
+        themeHash: get_theme_hash(),
+        page_title_prefix: settings.coin.name + ' History Browser' + page_title_suffix
+      }
+    );
   });
 });
 

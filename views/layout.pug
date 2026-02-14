@@ -165,7 +165,7 @@ html(lang='en')
     else
       - showNethashChart = false
       - showDifficultyChart = false
-    if active == 'home' || active == 'address' || active == 'block' || active == 'dashboard' || active == 'markets' || active == 'masternodes' || active == 'movement' || active == 'network' || active == 'orphans' || active == 'reward' || active == 'richlist' || active == 'tx'
+    if active == 'home' || active == 'address' || active == 'block' || active == 'dashboard' || active == 'history-browser' || active == 'markets' || active == 'masternodes' || active == 'movement' || active == 'network' || active == 'orphans' || active == 'reward' || active == 'richlist' || active == 'tx'
       include ./includes/common.pug
     if active == 'markets' || active == 'richlist' || active == 'reward' || showNethashChart == true || showDifficultyChart == true
       script(type='text/javascript', src='https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js')
@@ -1486,6 +1486,10 @@ html(lang='en')
                     a.nav-link(href='/dashboard')
                       span.fa-solid.fa-chart-column
                       span.margin-left-5 Blockchain Dashboard
+                li#history-browser.nav-item
+                  a.nav-link(href='/history-browser')
+                    span.fa-solid.fa-clock-rotate-left
+                    span.margin-left-5 History Browser
                 if settings.richlist_page.enabled == true
                   li#richlist.nav-item
                     a.nav-link(href='/richlist')
@@ -1616,6 +1620,10 @@ html(lang='en')
                   a.nav-link(href='/dashboard')
                     span.nav-icon.fa-solid.fa-chart-column
                     span.margin-left-5 Blockchain Dashboard
+              li#history-browser.nav-item(alt='History Browser', title='History Browser', data-bs-toggle='tooltip', data-bs-placement='right')
+                a.nav-link(href='/history-browser')
+                  span.nav-icon.fa-solid.fa-clock-rotate-left
+                  span.margin-left-5 History Browser
               if settings.richlist_page.enabled == true
                 li#richlist.nav-item(alt=settings.localization.menu_richlist, title=settings.localization.menu_richlist, data-bs-toggle='tooltip', data-bs-placement='right')
                   a.nav-link(href='/richlist')

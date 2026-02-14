@@ -1,0 +1,198 @@
+extends layout
+
+block content
+  script.
+    var historyEnabled = #{history_enabled ? 'true' : 'false'};
+    var historyBlock = #{(history_block == null ? 'null' : history_block)};
+    var currentHeight = #{(data && data.current_height != null ? data.current_height : 0)};
+    var lastUpdatedUnix = #{(last_updated == null ? 0 : last_updated)};
+
+    var setting_walletsPerPage = parseInt("#{settings.address_page.history_table.items_per_page}");
+    var lengthMenuOptsAdd = !{JSON.stringify(settings.address_page.history_table.page_length_options)};
+    var lengthMenuOpts = [];
+    var addedLength = false;
+
+    for (i = 0; i < lengthMenuOptsAdd.length; i++) {
+      if (!addedLength) {
+        if (lengthMenuOptsAdd[i] > setting_walletsPerPage) {
+          lengthMenuOpts.push(setting_walletsPerPage);
+          addedLength = true;
+        }
+      }
+
+      lengthMenuOpts.push(lengthMenuOptsAdd[i]);
+
+      if (!addedLength) {
+        if (lengthMenuOptsAdd[i] > setting_walletsPerPage)
+          lengthMenuOpts.push(setting_walletsPerPage);
+        if (lengthMenuOptsAdd[i] == setting_walletsPerPage || lengthMenuOptsAdd[i] > setting_walletsPerPage)
+          addedLength = true;
+      }
+    }
+
+    if (!addedLength && setting_walletsPerPage != lengthMenuOpts[lengthMenuOpts.length - 1])
+      lengthMenuOpts.push(setting_walletsPerPage);
+
+    $(document).ready(function() {
+      if (lastUpdatedUnix > 0)
+        $('span#lastUpdatedDate').html(' ' + format_unixtime(lastUpdatedUnix));
+      else
+        $('span#lastUpdatedDate').html(' N/A');
+
+      if (!historyEnabled)
+        $('#historyTimestamp').text((lastUpdatedUnix > 0 ? format_unixtime(lastUpdatedUnix) : 'N/A'));
+
+      $('#historyEnabledCheckbox').on('change', function() {
+        historyEnabled = $(this).is(':checked');
+        $('#historyEnabledHidden').val(historyEnabled ? '1' : '0');
+        $('#historyBlockInput').prop('disabled', !historyEnabled);
+        $('#historySubmit').prop('disabled', !historyEnabled);
+
+        if (!historyEnabled) {
+          window.location = '/history-browser';
+        }
+      });
+
+      var walletsTable = $('#history-wallets').dataTable({
+        autoWidth: false,
+        searching: false,
+        ordering: false,
+        responsive: true,
+        lengthChange: true,
+        processing: true,
+        serverSide: true,
+        iDisplayLength: setting_walletsPerPage,
+        lengthMenu: lengthMenuOpts,
+        scrollX: true,
+        ajax: {
+          url: '/ext/gethistorywallets/0/10/internal',
+          beforeSend: function(jqXHR, settings) {
+            const baseUrl = settings.url.split('?')[0];
+            const start = getParameterByName('start', settings.url);
+            const length = getParameterByName('length', settings.url);
+            const querySuffix = (historyEnabled && historyBlock != null ? ('?history=' + historyBlock) : '');
+
+            settings.url = baseUrl.substring(0, baseUrl.indexOf('/0/10/internal')) + '/' + start + '/' + length + '/internal' + querySuffix;
+            return true;
+          }
+        },
+        language: {
+          paginate: {
+            previous: '<',
+            next: '>'
+          }
+        },
+        rowCallback: function(row, data, index) {
+          const walletAddress = data[0];
+          const txCount = data[1];
+          const walletBalance = Number(data[2]).toLocaleString('en', {'minimumFractionDigits':2, 'maximumFractionDigits':8, 'useGrouping':true});
+          const balanceParts = walletBalance.split('.');
+          const lastTxTo = data[3];
+          const lastTxFrom = data[4];
+          const historySuffix = (historyEnabled && historyBlock != null ? ('?history=' + historyBlock) : '');
+
+          $("td:eq(0)", row).html('<a href="/address/' + walletAddress + historySuffix + '">' + walletAddress + '</a>').addClass('breakWord');
+          $("td:eq(1)", row).html(Number(txCount).toLocaleString('en')).addClass('text-center');
+          $("td:eq(2)", row).html(balanceParts[0] + '.<span class="decimals decimal">' + format_decimal_with_spaces(balanceParts[1]) + '</span>').addClass('text-center');
+          $("td:eq(3)", row).html((lastTxTo > 0 ? ('<span' + (#{settings.shared_pages.date_time.enable_alt_timezone_tooltips} == true ? ' data-bs-toggle="tooltip" data-bs-placement="auto" title="' + format_unixtime(lastTxTo, true) + '"' : '') + '>' + format_unixtime(lastTxTo) + '</span>') : '-')).addClass('text-center');
+          $("td:eq(4)", row).html((lastTxFrom > 0 ? ('<span' + (#{settings.shared_pages.date_time.enable_alt_timezone_tooltips} == true ? ' data-bs-toggle="tooltip" data-bs-placement="auto" title="' + format_unixtime(lastTxFrom, true) + '"' : '') + '>' + format_unixtime(lastTxFrom) + '</span>') : '-')).addClass('text-center');
+        },
+        fnDrawCallback: function(settings) {
+          fixDataTableColumns();
+          fixFooterHeightAndPosition();
+          enableTooltips();
+        }
+      });
+
+      if (#{settings.shared_pages.page_header.page_title_image.enable_animation} == true)
+        startRotateElement('img#header-img');
+    });
+
+  .container-fluid
+    .row.mt-4
+      .col-12
+        h1.mb-0 #{settings.coin.name} History Browser#{history_block_label == null ? '' : (' - Block ' + history_block_label)}
+        .sub-page-header
+          span.fw-bold=settings.localization.last_updated + ':'
+          span.text-muted#lastUpdatedDate
+
+    .row.mt-3
+      .col-12
+        .card.card-default.border-0.cardSpacer
+          .card-body
+            if history_error != null
+              .alert.alert-warning.alert-dismissible.fade.show(role='alert')
+                button.btn-close(type='button', data-bs-dismiss='alert')
+                span.fa-solid.fa-triangle-exclamation(style='margin-right:5px')
+                | #{history_error}
+            form#historyForm.d-flex.flex-wrap.align-items-center.gap-2(method='get', action='/history-browser')
+              .form-check
+                input#historyEnabledCheckbox.btn-check(type='checkbox', checked=(history_enabled == true))
+                label.btn.btn-outline-primary(for='historyEnabledCheckbox') Rollback history to block #
+              input#historyEnabledHidden(type='hidden', name='history_enabled', value=(history_enabled == true ? '1' : '0'))
+              input#historyBlockInput.form-control(type='number', name='history', min='0', value=history_input_value, style='max-width:180px;', disabled=(history_enabled != true))
+              button#historySubmit.btn.btn-primary(type='submit', disabled=(history_enabled != true)) Submit
+              h5#historyTimestamp.text-muted=history_timestamp_text
+
+    .row.g-4.mt-3
+      .col-xl-3.col-lg-4.col-md-6
+        .card.h-100
+          .card-body
+            h5.card-title
+              i.fas.fa-cube.me-2
+              | Latest Block
+            hr
+            .mb-2
+              strong Height:
+              span.ms-2= data.latestBlockHeight.toLocaleString()
+            .mb-2
+              strong Hash:
+              .text-break.small.mt-1
+                a(href='/block/' + data.latestBlockHash)= data.latestBlockHash
+      .col-xl-3.col-lg-4.col-md-6
+        .card.h-100
+          .card-body
+            h5.card-title
+              i.fas.fa-chart-line.me-2
+              | Difficulty
+            hr
+            - var difficultyValue = Number(data.difficulty || 0).toFixed(8);
+            - var difficultyParts = difficultyValue.split('.');
+            - var difficultyDecimal = difficultyParts[1].replace(/(\d{3})/g, '$1 ').trim();
+            p.h4.mb-0 #{difficultyParts[0]}.
+              span.decimal #{difficultyDecimal}
+      .col-xl-3.col-lg-4.col-md-6
+        .card.h-100
+          .card-body
+            h5.card-title
+              i.fas.fa-coins.me-2
+              | Total Supply
+            hr
+            p.h4.mb-0= Number(data.totalSupply || 0).toLocaleString() + ' ' + settings.coin.symbol
+      .col-xl-3.col-lg-4.col-md-6
+        .card.h-100
+          .card-body
+            h5.card-title
+              i.fas.fa-exchange-alt.me-2
+              | Total Transactions
+            hr
+            p.h4.mb-0= Number(data.totalTxCount || 0).toLocaleString()
+
+    .row.mt-4
+      .col-12
+        .card.card-default.border-0.cardSpacer
+          .card-header
+            strong Wallets
+          table#history-wallets.table.table-bordered.table-striped.table-paging.table-hover
+            - var theadClasses = [];
+            if settings.shared_pages.table_header_bgcolor != null && settings.shared_pages.table_header_bgcolor != ''
+              - theadClasses.push('table-' + settings.shared_pages.table_header_bgcolor);
+            thead
+              tr(class=theadClasses)
+                th Wallet Address
+                th.text-center Number of Transactions
+                th.text-center Wallet Balance
+                  span.small.fw-normal  (#{settings.coin.symbol})
+                th.text-center Last Transaction to Wallet
+                th.text-center Last Transaction from Wallet
+            tbody

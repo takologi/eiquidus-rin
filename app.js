@@ -780,6 +780,57 @@ app.use('/ext/getaddresstxs/:address/:start/:length', function(req, res) {
     res.end(settings.localization.method_disabled);
 });
 
+app.use('/ext/gethistorywallets/:start/:length', function(req, res) {
+  if (req.headers['x-requested-with'] != null && req.headers['x-requested-with'].toLowerCase() == 'xmlhttprequest' && req.headers.referer != null && req.headers.accept.indexOf('text/javascript') > -1 && req.headers.accept.indexOf('application/json') > -1) {
+    var internal = false;
+    var history_block = null;
+    var split = req.url.split('/').filter(function(v) { return v; });
+
+    if (split.length > 0 && split[0].indexOf('internal') == 0)
+      internal = true;
+
+    if (typeof req.params.length === 'undefined' || isNaN(req.params.length) || req.params.length < 1)
+      req.params.length = 10;
+    if (typeof req.params.start === 'undefined' || isNaN(req.params.start) || req.params.start < 0)
+      req.params.start = 0;
+
+    if (req.query != null && req.query.history != null && /^\d+$/.test(req.query.history.toString().trim()))
+      history_block = Number(req.query.history);
+
+    db.get_history_wallets(req.params.start, req.params.length, history_block, function(rows, count) {
+      var data = [];
+
+      for (i = 0; i < rows.length; i++) {
+        if (internal) {
+          var row = [];
+
+          row.push(rows[i]._id);
+          row.push(rows[i].tx_count);
+          row.push(Number(rows[i].balance / 100000000));
+          row.push((rows[i].last_to_timestamp ? rows[i].last_to_timestamp : 0));
+          row.push((rows[i].last_from_timestamp ? rows[i].last_from_timestamp : 0));
+
+          data.push(row);
+        } else {
+          data.push({
+            address: rows[i]._id,
+            tx_count: rows[i].tx_count,
+            balance: Number(rows[i].balance / 100000000),
+            last_to_timestamp: (rows[i].last_to_timestamp ? rows[i].last_to_timestamp : 0),
+            last_from_timestamp: (rows[i].last_from_timestamp ? rows[i].last_from_timestamp : 0)
+          });
+        }
+      }
+
+      if (internal)
+        res.json({"data": data, "recordsTotal": count, "recordsFiltered": count});
+      else
+        res.json(data);
+    });
+  } else
+    res.end(settings.localization.method_disabled);
+});
+
 function get_connection_and_block_counts(get_data, cb) {
   // check if the connection and block counts should be returned
   if (get_data) {

@@ -102,7 +102,7 @@ Address summary values become history-aware for `history=xxx`:
 - balance at selected historical block
 - sent/received consistency with historical transaction window
 
-### Phase 3 (pending)
+### Phase 3 (implemented, pending validation)
 
 Create new **History Browser** page with:
 
@@ -113,6 +113,55 @@ Create new **History Browser** page with:
 - wallets table and history-aware address links
 - retained history controls during paging
 - header menu entry
+
+Implementation details:
+
+- `routes/index.js`
+  - Added route: `/history-browser`.
+  - Handles checkbox mode (`history_enabled=1`) and block input (`history=xxx`).
+  - Validates history range and falls back to latest state with warning on invalid values.
+  - Uses historical block timestamp (UTC) when history mode is active.
+- `views/history_browser.pug`
+  - Added page title: `<coin.name> History Browser`.
+  - Added control div with checkbox, numeric input, submit button, and timestamp text.
+  - Default unchecked mode keeps input + submit disabled and uses latest state.
+  - Added top four metric cards: latest block, difficulty, total supply, total transactions.
+  - Added wallets DataTable with columns:
+    - wallet address (history-aware link to `/address/:hash?history=...` when active)
+    - number of transactions
+    - wallet balance
+    - last transaction to wallet timestamp
+    - last transaction from wallet timestamp
+  - Retains history state during table page switching.
+- `app.js`
+  - Added endpoint: `/ext/gethistorywallets/:start/:length`.
+  - Supports optional `history` query parameter and internal DataTables payload shape.
+- `lib/database.js`
+  - Added overview method for latest/historical top metrics.
+  - Added wallets aggregation method with optional history filtering.
+  - Optimized wallet timestamp calculation using block-height lookups (avoids per-tx joins).
+- `views/layout.pug`
+  - Added History Browser menu entry in both header menu layouts.
+  - Enabled common client scripts for active page id `history-browser`.
+
+Validation checklist for Phase 3:
+
+1. Open `/history-browser`:
+   - checkbox is unchecked by default
+   - input + submit are disabled
+   - input value equals latest block height
+   - timestamp text matches Last updated under title
+2. Check checkbox:
+   - input + submit become enabled
+3. Enter valid historical block and submit:
+   - top metric cards switch to historical values
+   - timestamp text switches to selected block time
+   - wallet links include `?history=...`
+4. Use table paging in history mode:
+   - history mode and values stay intact
+5. Submit invalid/out-of-range history:
+   - warning is shown
+   - page falls back to latest state
 
 ### Phase 4 (pending)
 
