@@ -34,6 +34,8 @@ block content
       lengthMenuOpts.push(setting_walletsPerPage);
 
     $(document).ready(function() {
+      var sortableColumns = [0, 1, 2, 3, 4];
+
       if (lastUpdatedUnix > 0)
         $('span#lastUpdatedDate').html(' ' + format_unixtime(lastUpdatedUnix));
       else
@@ -56,13 +58,21 @@ block content
       var walletsTable = $('#history-wallets').dataTable({
         autoWidth: false,
         searching: false,
-        ordering: false,
+        ordering: true,
         responsive: true,
         lengthChange: true,
         processing: true,
         serverSide: true,
         iDisplayLength: setting_walletsPerPage,
         lengthMenu: lengthMenuOpts,
+        order: [[2, 'desc']],
+        columnDefs: [
+          {
+            targets: sortableColumns,
+            orderable: true,
+            orderSequence: ['desc', 'asc']
+          }
+        ],
         scrollX: true,
         ajax: {
           url: '/ext/gethistorywallets/0/10/internal',
@@ -70,9 +80,17 @@ block content
             const baseUrl = settings.url.split('?')[0];
             const start = getParameterByName('start', settings.url);
             const length = getParameterByName('length', settings.url);
-            const querySuffix = (historyEnabled && historyBlock != null ? ('?history=' + historyBlock) : '');
+            const queryString = (settings.url.indexOf('?') > -1 ? settings.url.substring(settings.url.indexOf('?') + 1) : '');
+            const queryParams = new URLSearchParams(queryString);
 
-            settings.url = baseUrl.substring(0, baseUrl.indexOf('/0/10/internal')) + '/' + start + '/' + length + '/internal' + querySuffix;
+            if (historyEnabled && historyBlock != null)
+              queryParams.set('history', historyBlock);
+            else
+              queryParams.delete('history');
+
+            const querySuffix = queryParams.toString();
+
+            settings.url = baseUrl.substring(0, baseUrl.indexOf('/0/10/internal')) + '/' + start + '/' + length + '/internal' + (querySuffix != '' ? ('?' + querySuffix) : '');
             return true;
           }
         },
@@ -103,6 +121,30 @@ block content
           enableTooltips();
         }
       });
+
+      function updateSortHeaderStyles() {
+        const order = walletsTable.api().order();
+        const orderColumn = (order != null && order.length > 0 ? order[0][0] : null);
+        const orderDirection = (order != null && order.length > 0 ? order[0][1] : null);
+        const arrowText = (orderDirection == 'asc' ? ' ▲' : ' ▼');
+
+        $('#history-wallets thead th').removeClass('table-active');
+        $('#history-wallets thead th .sort-arrow').remove();
+
+        if (orderColumn != null) {
+          const $header = $('#history-wallets thead th').eq(orderColumn);
+          $header.addClass('table-active');
+
+          if (sortableColumns.indexOf(orderColumn) > -1)
+            $header.append('<span class="sort-arrow">' + arrowText + '</span>');
+        }
+      }
+
+      walletsTable.api().on('order.dt', function() {
+        updateSortHeaderStyles();
+      });
+
+      updateSortHeaderStyles();
 
       if (#{settings.shared_pages.page_header.page_title_image.enable_animation} == true)
         startRotateElement('img#header-img');
@@ -190,9 +232,9 @@ block content
             thead
               tr(class=theadClasses)
                 th Wallet Address
-                th.text-center Number of Transactions
-                th.text-center Wallet Balance
+                th.text-center # of TXs
+                th.text-center Balance
                   span.small.fw-normal  (#{settings.coin.symbol})
-                th.text-center Last Transaction to Wallet
-                th.text-center Last Transaction from Wallet
+                th.text-center Last TX to Wallet
+                th.text-center Last TX from Wallet
             tbody

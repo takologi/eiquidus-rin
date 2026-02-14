@@ -163,9 +163,50 @@ Validation checklist for Phase 3:
    - warning is shown
    - page falls back to latest state
 
-### Phase 4 (pending)
+### Phase 4 (implemented, pending validation)
 
 Add sortable behavior to History Browser wallets table, aligned with Phase 1 interaction model.
+
+Implemented behavior:
+
+- Clickable sorting on columns:
+  - Wallet Address
+  - Number of Transactions
+  - Wallet Balance
+  - Last Transaction to Wallet
+  - Last Transaction from Wallet
+- First click sorts **descending**, second click sorts **ascending**.
+- Active sort column is highlighted.
+- Sort direction is shown with a small arrow (`▲` / `▼`).
+- Sorting remains server-side and persists through paging in DataTables internal mode.
+- History mode (`history=...`) remains intact while sorting/paging.
+
+Implementation details:
+
+- `views/history_browser.pug`
+  - Enabled DataTables ordering with descending-first order sequence.
+  - Preserved DataTables query parameters in ajax `beforeSend` so sort choices are forwarded.
+  - Added active-header highlight and direction arrow updates.
+- `app.js`
+  - Extended `/ext/gethistorywallets/:start/:length` to parse DataTables `order[0][column]` and `order[0][dir]` (nested and bracket-key formats).
+  - Passed parsed ordering into DB layer.
+- `lib/database.js`
+  - Extended `get_history_wallets()` with sort column + direction args.
+  - Added server-side sort mapping for all wallets-table columns.
+  - Added deterministic secondary ordering via `last_activity_block` for non-activity-primary sorts.
+  - Added robust string sort key for wallet addresses (`address_sort`).
+
+Validation checklist for Phase 4:
+
+1. Open `/history-browser` in latest mode.
+2. Click each wallets-table header:
+   - first click sorts descending
+   - second click sorts ascending
+3. Verify active sorted header highlight and arrow update.
+4. Move to next table page and confirm selected ordering remains active.
+5. Enable history mode and submit a valid historical block:
+   - repeat sorting checks and confirm order remains correct
+   - confirm `history` mode remains active while paging/sorting
 
 ## Validation Checklist For Phase 1
 

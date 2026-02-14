@@ -784,6 +784,8 @@ app.use('/ext/gethistorywallets/:start/:length', function(req, res) {
   if (req.headers['x-requested-with'] != null && req.headers['x-requested-with'].toLowerCase() == 'xmlhttprequest' && req.headers.referer != null && req.headers.accept.indexOf('text/javascript') > -1 && req.headers.accept.indexOf('application/json') > -1) {
     var internal = false;
     var history_block = null;
+    var order_col = null;
+    var order_dir = null;
     var split = req.url.split('/').filter(function(v) { return v; });
 
     if (split.length > 0 && split[0].indexOf('internal') == 0)
@@ -797,7 +799,39 @@ app.use('/ext/gethistorywallets/:start/:length', function(req, res) {
     if (req.query != null && req.query.history != null && /^\d+$/.test(req.query.history.toString().trim()))
       history_block = Number(req.query.history);
 
-    db.get_history_wallets(req.params.start, req.params.length, history_block, function(rows, count) {
+    // capture ordering values from DataTables querystring (supports both nested and bracket-key formats)
+    if (req.query != null) {
+      if (req.query.order != null) {
+        let firstOrder = null;
+
+        if (Array.isArray(req.query.order) && req.query.order.length > 0)
+          firstOrder = req.query.order[0];
+        else if (typeof req.query.order === 'object')
+          firstOrder = (req.query.order[0] != null ? req.query.order[0] : req.query.order['0']);
+
+        if (firstOrder != null) {
+          order_col = firstOrder.column;
+          order_dir = firstOrder.dir;
+        }
+      }
+
+      if (order_col == null && req.query['order[0][column]'] != null)
+        order_col = req.query['order[0][column]'];
+      if (order_dir == null && req.query['order[0][dir]'] != null)
+        order_dir = req.query['order[0][dir]'];
+    }
+
+    if (typeof order_col === 'undefined' || order_col == null || isNaN(order_col))
+      order_col = null;
+    else
+      order_col = Number(order_col);
+
+    if (typeof order_dir === 'undefined' || order_dir == null)
+      order_dir = null;
+    else
+      order_dir = (order_dir.toString().toLowerCase().indexOf('asc') == 0 ? 'asc' : 'desc');
+
+    db.get_history_wallets(req.params.start, req.params.length, history_block, order_col, order_dir, function(rows, count) {
       var data = [];
 
       for (i = 0; i < rows.length; i++) {
