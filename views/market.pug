@@ -17,7 +17,7 @@ block content
           $('span#lastUpdatedDate').html(' N/A');
       }
       if (#{settings.shared_pages.page_header.page_title_image.enable_animation} == true && #{settings.markets_page.page_header.show_img} == true)
-        startRotateElement('img#header-img');
+        startRotateElementTwin('img#header-img','img#header-img-back');
     });
   - var theadClasses = [];
   if settings.shared_pages.table_header_bgcolor != null && settings.shared_pages.table_header_bgcolor != ''
@@ -87,9 +87,10 @@ block content
         if settings.markets_page.page_header.show_img == true
           #header-img-container
             img#header-img(src=(settings.shared_pages.page_header.page_title_image == null || settings.shared_pages.page_header.page_title_image.image_path == null || settings.shared_pages.page_header.page_title_image.image_path == '' ? '/img/page-title-img.png' : settings.shared_pages.page_header.page_title_image.image_path))
+            img#header-img-back(src=(settings.shared_pages.page_header.page_title_image == null || settings.shared_pages.page_header.page_title_image.image_path2 == null || settings.shared_pages.page_header.page_title_image.image_path2 == '' ? '/img/page-title-img2.png' : settings.shared_pages.page_header.page_title_image.image_path2))
         #page-title-container
           if settings.markets_page.page_header.show_title == true
-            h3#page-title !{settings.localization.mkt_title.replace('{1}', marketdata.market_name + ' <span class="small fw-normal">(' + marketdata.coin + '/' + marketdata.exchange + ')</span>')}
+            h1#page-title !{settings.localization.mkt_title.replace('{1}', marketdata.market_name + ' <span class="small fw-normal">(' + marketdata.coin + '/' + marketdata.exchange + ')</span>')}
           if settings.markets_page.page_header.show_last_updated == true
             if settings.markets_page.page_header.show_title != true && settings.markets_page.page_header.show_description != true && (settings.markets_page.page_header.show_exchange_url != true && marketdata.url != null && marketdata.url != '')
               #page-title-container

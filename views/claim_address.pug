@@ -71,7 +71,7 @@ block content
           $('#claimAlert').html(generateAlertHTML('info', true, ('!{claim_name}' == '' ? 'Unc' : 'C') + 'laimed address', '<strong>!{hash}</strong> is currently ' + ('!{claim_name}' == '' ? 'un' : '') + 'claimed' + ('!{claim_name}' == '' ? '' : ' as <strong>' + displayAsText('!{claim_name}') + '.</strong>')));
         }
         if (#{settings.shared_pages.page_header.page_title_image.enable_animation} == true && #{settings.claim_address_page.page_header.show_img} == true)
-          startRotateElement('img#header-img');
+          startRotateElementTwin('img#header-img','img#header-img-back');
       });
       function displayAsText(str) {
         return str.replace(/</g, '&#60;').replace(/>/g, '&#62;');
@@ -142,9 +142,10 @@ block content
         if settings.claim_address_page.page_header.show_img == true
           #header-img-container
             img#header-img(src=(settings.shared_pages.page_header.page_title_image == null || settings.shared_pages.page_header.page_title_image.image_path == null || settings.shared_pages.page_header.page_title_image.image_path == '' ? '/img/page-title-img.png' : settings.shared_pages.page_header.page_title_image.image_path))
+            img#header-img-back(src=(settings.shared_pages.page_header.page_title_image == null || settings.shared_pages.page_header.page_title_image.image_path2 == null || settings.shared_pages.page_header.page_title_image.image_path2 == '' ? '/img/page-title-img2.png' : settings.shared_pages.page_header.page_title_image.image_path2))
         #page-title-container
           if settings.claim_address_page.page_header.show_title == true
-            h3#page-title #{settings.localization.claim_title.replace('{1}', settings.coin.name)}
+            h1#page-title #{settings.localization.claim_title.replace('{1}', settings.coin.name)}
           if settings.claim_address_page.page_header.show_description == true
             if settings.claim_address_page.page_header.show_title != true
               #page-title-container

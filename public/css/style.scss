@@ -1670,9 +1670,13 @@ div[data-overlayscrollbars-viewport="scrollbarHidden"] > .navbar-nav > li#market
   margin-right: 5px;
 }
 
-#header-img {
+#header-img, #header-img-back {
   width: 48px;
   height: 48px;
+}
+
+#header-img-back {
+  display: none;
 }
 
 #page-title {

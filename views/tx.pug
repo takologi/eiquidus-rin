@@ -13,7 +13,7 @@ block content
         enableTooltips();
       }
       if (#{settings.shared_pages.page_header.page_title_image.enable_animation} == true && #{settings.transaction_page.page_header.show_img} == true)
-        startRotateElement('img#header-img');
+        startRotateElementTwin('img#header-img','img#header-img-back');
     });
   .col-xs-12.col-md-12
     if orphan != null && orphan == true
@@ -29,9 +29,10 @@ block content
         if settings.transaction_page.page_header.show_img == true
           #header-img-container
             img#header-img(src=(settings.shared_pages.page_header.page_title_image == null || settings.shared_pages.page_header.page_title_image.image_path == null || settings.shared_pages.page_header.page_title_image.image_path == '' ? '/img/page-title-img.png' : settings.shared_pages.page_header.page_title_image.image_path))
+            img#header-img-back(src=(settings.shared_pages.page_header.page_title_image == null || settings.shared_pages.page_header.page_title_image.image_path2 == null || settings.shared_pages.page_header.page_title_image.image_path2 == '' ? '/img/page-title-img2.png' : settings.shared_pages.page_header.page_title_image.image_path2))
         #page-title-container
           if settings.transaction_page.page_header.show_title == true
-            h3#page-title #{settings.localization.tx_title.replace('{1}', settings.coin.name)}
+            h1#page-title #{settings.localization.tx_title.replace('{1}', settings.coin.name)}
           if settings.transaction_page.page_header.show_description == true
             if settings.transaction_page.page_header.show_title != true
               #page-title-container

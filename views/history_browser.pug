@@ -151,16 +151,21 @@ block content
       updateSortHeaderStyles();
 
       if (#{settings.shared_pages.page_header.page_title_image.enable_animation} == true)
-        startRotateElement('img#header-img');
+        startRotateElementTwin('img#header-img','img#header-img-back');
     });
 
   .container-fluid
     .row.mt-4
       .col-12
-        h1.mb-0 #{settings.coin.name} History Browser#{history_block_label == null ? '' : (' - Block ' + history_block_label)}
-        .sub-page-header
-          span.fw-bold=settings.localization.last_updated + ':'
-          span.text-muted#lastUpdatedDate
+        #page-header-container(style='align-items:center')
+          #header-img-container
+            img#header-img(src=(settings.shared_pages.page_header.page_title_image == null || settings.shared_pages.page_header.page_title_image.image_path == null || settings.shared_pages.page_header.page_title_image.image_path == '' ? '/img/page-title-img.png' : settings.shared_pages.page_header.page_title_image.image_path))
+            img#header-img-back(src=(settings.shared_pages.page_header.page_title_image == null || settings.shared_pages.page_header.page_title_image.image_path2 == null || settings.shared_pages.page_header.page_title_image.image_path2 == '' ? '/img/page-title-img2.png' : settings.shared_pages.page_header.page_title_image.image_path2))
+          #page-title-container
+            h1.mb-0 #{settings.coin.name} History Browser#{history_block_label == null ? '' : (' - Block ' + history_block_label)}
+            .sub-page-header
+              span.fw-bold=settings.localization.last_updated + ':'
+              span.text-muted#lastUpdatedDate
 
     .row.mt-3
       .col-12

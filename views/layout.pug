@@ -255,6 +255,78 @@ html(lang='en')
           $($.fn.dataTable.tables(true)).DataTable().columns.adjust();
         }, 2);
       }
+      function rotateElementTwin(elementSelector1, elementSelector2) {
+        const element1 = $(elementSelector1);
+        const element2 = $(elementSelector2);
+
+        if (element1.length > 0 && element2.length > 0) {
+          let swappedAt90 = false;
+          let swappedAt270 = false;
+
+          element1.css({
+            display: 'inherit',
+            transform: 'rotateY(0deg)'
+          });
+
+          element2.css({
+            display: 'none',
+            transform: 'rotateY(0deg)'
+          });
+
+          $({ deg: 0 }).animate({ deg: 360 }, {
+            duration: 2000,
+            step: function(deg) {
+              element1.css({
+                transform: 'rotateY(' + deg + 'deg)'
+              });
+
+              element2.css({
+                transform: 'rotateY(' + deg + 'deg)'
+              });
+
+              if (!swappedAt90 && deg >= 90) {
+                swappedAt90 = true;
+                element1.css({
+                  display: 'none'
+                });
+                element2.css({
+                  display: 'inherit'
+                });
+              }
+
+              if (!swappedAt270 && deg >= 270) {
+                swappedAt270 = true;
+                element2.css({
+                  display: 'none'
+                });
+                element1.css({
+                  display: 'inherit'
+                });
+              }
+            },
+            done: function() {
+              element1.css({
+                display: 'inherit',
+                transform: 'rotateY(0deg)'
+              });
+
+              element2.css({
+                display: 'none',
+                transform: 'rotateY(0deg)'
+              });
+
+              setTimeout(function() {
+                rotateElementTwin(elementSelector1, elementSelector2);
+              }, 1500);
+            }
+          });
+        }
+      }
+      function startRotateElementTwin(elementSelector1, elementSelector2) {
+        setTimeout(function() {
+          rotateElementTwin(elementSelector1, elementSelector2);
+        }, 100);
+      }
       function rotateElement(elementSelector) {
         const element = $(elementSelector);
 
