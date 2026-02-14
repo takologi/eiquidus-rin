@@ -608,7 +608,7 @@ app.use('/ext/getbasicstats', function(req, res) {
 app.use('/ext/getlasttxs/:min', function(req, res) {
   // check if the getlasttxs api is enabled or else check the headers to see if it matches an internal ajax request from the explorer itself (TODO: come up with a more secure method of whitelisting ajax calls from the explorer)
   if ((settings.api_page.enabled == true && settings.api_page.public_apis.ext.getlasttxs.enabled == true) || (req.headers['x-requested-with'] != null && req.headers['x-requested-with'].toLowerCase() == 'xmlhttprequest' && req.headers.referer != null && req.headers.accept.indexOf('text/javascript') > -1 && req.headers.accept.indexOf('application/json') > -1)) {
-    var min = req.params.min, start, length, internal = false;
+    var min = req.params.min, start, length, internal = false, order_col = null, order_dir = null;
     // split url suffix by forward slash and remove blank entries
     var split = req.url.split('/').filter(function(v) { return v; });
     // determine how many parameters were passed
@@ -627,8 +627,15 @@ app.use('/ext/getlasttxs/:min', function(req, res) {
           start = split[0];
           length = split[1];
           // check if this is an internal request
-          if (split.length > 2 && split[2] == 'internal')
+          if (split.length > 2 && split[2].indexOf('internal') == 0) {
             internal = true;
+
+            // capture ordering data if passed from the internal datatable request
+            if (split.length > 3)
+              order_col = split[3];
+            if (split.length > 4)
+              order_dir = split[4];
+          }
         }
 
         break;
@@ -644,7 +651,44 @@ app.use('/ext/getlasttxs/:min', function(req, res) {
     else
       min  = (min * 100000000);
 
-    db.get_last_txs(start, length, min, internal, function(data, count) {
+    // capture ordering values from DataTables querystring (supports both nested and bracket-key formats)
+    if (req.query != null) {
+      if (req.query.order != null) {
+        let firstOrder = null;
+
+        if (Array.isArray(req.query.order) && req.query.order.length > 0)
+          firstOrder = req.query.order[0];
+        else if (typeof req.query.order === 'object')
+          firstOrder = (req.query.order[0] != null ? req.query.order[0] : req.query.order['0']);
+
+        if (firstOrder != null) {
+          order_col = firstOrder.column;
+          order_dir = firstOrder.dir;
+        }
+      }
+
+      if (order_col == null && req.query['order[0][column]'] != null)
+        order_col = req.query['order[0][column]'];
+      if (order_dir == null && req.query['order[0][dir]'] != null)
+        order_dir = req.query['order[0][dir]'];
+    }
+
+    // fix ordering parameters for internal datatable requests
+    if (typeof order_col === 'undefined' || order_col == null || isNaN(order_col)) {
+      // fallback to path values if query params are not available
+      if (split.length > 3 && !isNaN(split[3]))
+        order_col = Number(split[3]);
+      else
+        order_col = null;
+    } else
+      order_col = Number(order_col);
+
+    if (typeof order_dir === 'undefined' || order_dir == null)
+      order_dir = null;
+    else
+      order_dir = (order_dir.toString().toLowerCase().indexOf('asc') == 0 ? 'asc' : 'desc');
+
+    db.get_last_txs(start, length, min, internal, order_col, order_dir, function(data, count) {
       // check if this is an internal request
       if (internal) {
         // display data formatted for internal datatable

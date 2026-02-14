@@ -35,21 +35,57 @@ block content
     else
       var displayLengthMax = setting_txPerPage;
     $(document).ready(function() {
+      var timestampColumnIndex = 5;
+
+      if (#{settings.block_page.multi_algorithm.show_algo} == true)
+        timestampColumnIndex += 1;
+      if (#{settings.index_page.show_extracted_by} == true)
+        timestampColumnIndex += 1;
+
+      var sortableColumns = [1, 2, 3, 4, timestampColumnIndex];
+      var allColumnIndexes = [];
+      var nonSortableColumns = [];
+
+      for (var colIndex = 0; colIndex <= timestampColumnIndex; colIndex++)
+        allColumnIndexes.push(colIndex);
+
+      for (var idx = 0; idx < allColumnIndexes.length; idx++) {
+        if (sortableColumns.indexOf(allColumnIndexes[idx]) === -1)
+          nonSortableColumns.push(allColumnIndexes[idx]);
+      }
+
       var rtable = $('#recent-table').dataTable({
         autoWidth: false,
         searching: false,
-        ordering: false,
+        ordering: true,
         responsive: false,
         lengthChange: true,
         processing: true,
         serverSide: true,
         iDisplayLength: displayLengthMax,
         lengthMenu: lengthMenuOpts,
+        order: [[timestampColumnIndex, 'desc']],
+        columnDefs: [
+          {
+            targets: nonSortableColumns,
+            orderable: false
+          },
+          {
+            targets: sortableColumns,
+            orderable: true,
+            orderSequence: ['desc', 'asc']
+          }
+        ],
         scrollX: true,
         ajax: {
           url: '/ext/getlasttxs/0',
           beforeSend: function(jqXHR, settings) {
-            settings.url = settings.url.substring(0, settings.url.indexOf('?')) + '/' + getParameterByName('start', settings.url) + '/' + getParameterByName('length', settings.url) + '/internal';
+            const baseUrl = settings.url.split('?')[0];
+            const queryString = (settings.url.indexOf('?') > -1 ? settings.url.substring(settings.url.indexOf('?')) : '');
+            const start = getParameterByName('start', settings.url);
+            const length = getParameterByName('length', settings.url);
+
+            settings.url = baseUrl + '/' + start + '/' + length + '/internal' + queryString;
             return true;
           }
         },
@@ -118,6 +154,30 @@ block content
           enableTooltips();
         }
       });
+
+      function updateSortHeaderStyles() {
+        const order = rtable.api().order();
+        const orderColumn = (order != null && order.length > 0 ? order[0][0] : null);
+        const orderDirection = (order != null && order.length > 0 ? order[0][1] : null);
+        const arrowText = (orderDirection == 'asc' ? ' ▲' : ' ▼');
+
+        $('#recent-table thead th').removeClass('table-active');
+        $('#recent-table thead th .sort-arrow').remove();
+
+        if (orderColumn != null) {
+          const $header = $('#recent-table thead th').eq(orderColumn);
+          $header.addClass('table-active');
+
+          if (sortableColumns.indexOf(orderColumn) > -1)
+            $header.append('<span class="sort-arrow">' + arrowText + '</span>');
+        }
+      }
+
+      rtable.api().on('order.dt', function() {
+        updateSortHeaderStyles();
+      });
+
+      updateSortHeaderStyles();
 
       function update_last_updated(lastUpdatedDate) {
         if (lastUpdatedDate != 0) {
