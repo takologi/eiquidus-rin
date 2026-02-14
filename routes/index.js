@@ -91,7 +91,7 @@ function finalize_send_tx_data(res, tx, blockcount, orphan, extracted_by_address
   );
 }
 
-function send_address_data(res, address, claim_name, history_block, history_error, historical_balance) {
+function send_address_data(res, address, claim_name, history_block, history_error, historical_summary) {
   const history_block_label = (history_block != null
     ? ('#' + history_block + (address.history_timestamp_text == null ? '' : ' (' + address.history_timestamp_text + ')'))
     : null);
@@ -106,7 +106,7 @@ function send_address_data(res, address, claim_name, history_block, history_erro
       history_block: history_block,
       history_block_label: history_block_label,
       history_error: history_error,
-      historical_balance: historical_balance,
+      historical_summary: historical_summary,
       showSync: db.check_show_sync_message(),
       customHash: get_custom_hash(),
       styleHash: get_style_hash(),
@@ -417,8 +417,8 @@ function route_get_address(res, hash, history_param) {
         get_history_data(function(history_block, history_error, history_timestamp_text) {
           address.history_timestamp_text = history_timestamp_text;
 
-          function finalize_address_render(claim_name, historical_balance) {
-            send_address_data(res, address, claim_name, history_block, history_error, historical_balance);
+          function finalize_address_render(claim_name, historical_summary) {
+            send_address_data(res, address, claim_name, history_block, history_error, historical_summary);
           }
 
           function resolve_claim_name(cb) {
@@ -432,9 +432,9 @@ function route_get_address(res, hash, history_param) {
           }
 
           if (history_block != null && history_error == null) {
-            db.get_address_balance_at_block(hash, history_block, function(historical_balance) {
+            db.get_address_summary_at_block(hash, history_block, function(historical_summary) {
               resolve_claim_name(function(claim_name) {
-                finalize_address_render(claim_name, historical_balance);
+                finalize_address_render(claim_name, historical_summary);
               });
             });
           } else {

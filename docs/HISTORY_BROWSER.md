@@ -77,7 +77,7 @@ Implementation details:
   - Appends `?history=...` to internal address tx table requests.
   - Shows title suffix ` - History up to Block #xxx (Mon DD, YYYY HH:mm:ss UTC)` for valid history mode.
   - Shows warning alert when history value is out of range and latest state is shown.
-  - Uses historical balance override in summary balance cell when history mode is active.
+  - Uses historical summary overrides (balance, total sent, total received) when history mode is active.
   - Shows text under balance value: `WARNING! This is a balance from the history up to block #xxx (Mon DD, YYYY HH:mm:ss UTC)`.
 - `app.js`
   - Extended `/ext/getaddresstxs/:address/:start/:length` to accept optional `history` query parameter.

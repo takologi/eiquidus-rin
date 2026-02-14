@@ -120,12 +120,14 @@ block content
       if (#{settings.shared_pages.page_header.page_title_image.enable_animation} == true && #{settings.address_page.page_header.show_img} == true)
         startRotateElement('img#header-img');
     });
-  - var rawBalance = (historical_balance == null ? (address.received - address.sent) : historical_balance);
+  - var rawBalance = (historical_summary == null || historical_summary.balance == null ? (address.received - address.sent) : historical_summary.balance);
   - var balance = Number(rawBalance / 100000000).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
   - var balanceParts = balance.split('.');
-  - var sent = Number(address.sent /100000000).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
+  - var rawSent = (historical_summary == null || historical_summary.sent == null ? address.sent : historical_summary.sent);
+  - var sent = Number(rawSent /100000000).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
   - var sentParts = sent.split('.');
-  - var received = Number(address.received / 100000000).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
+  - var rawReceived = (historical_summary == null || historical_summary.received == null ? address.received : historical_summary.received);
+  - var received = Number(rawReceived / 100000000).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});
   - var receivedParts = received.split('.');
   - var balanceDecimal = balanceParts[1].replace(/(\d{3})/g, '$1 ').trim();
   - var sentDecimal = sentParts[1].replace(/(\d{3})/g, '$1 ').trim();
@@ -190,7 +192,7 @@ block content
             td.text-center.addr-summary
               span #{balanceParts[0]}.
               span.decimal #{balanceDecimal}
-              if history_block != null && historical_balance != null
+              if history_block != null && historical_summary != null
                 div.text-warning.small.mt-1 WARNING! This is a balance from the history up to block #{history_block_label}
             if settings.address_page.show_sent_received == true
               td.text-center.addr-summary #{sentParts[0]}.
