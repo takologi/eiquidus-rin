@@ -15,5 +15,6 @@ var DashboardBlockStatsSchema = new Schema({
 }, {id: false});
 
 DashboardBlockStatsSchema.index({height: 1, time: 1});
+DashboardBlockStatsSchema.index({height: 1, block_reward: 1});
 
 module.exports = mongoose.model('DashboardBlockStats', DashboardBlockStatsSchema);

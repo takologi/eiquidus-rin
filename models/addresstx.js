@@ -10,5 +10,6 @@ var AddressTXSchema = new Schema({
 
 AddressTXSchema.index({a_id: 1, blockindex: -1});
 AddressTXSchema.index({blockindex: 1, a_id: 1, amount: 1});
+AddressTXSchema.index({a_id: 1, amount: 1, blockindex: 1});
 
 module.exports = mongoose.model('AddressTx', AddressTXSchema);
