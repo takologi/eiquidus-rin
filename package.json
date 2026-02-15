@@ -20,6 +20,7 @@
     "sync-markets": "node ./scripts/sync.js market",
     "sync-peers": "node ./scripts/sync.js peers",
     "sync-masternodes": "node ./scripts/sync.js masternodes",
+    "sync-checkpoint": "node ./scripts/sync.js checkpoint",
     "check-blocks": "node ./scripts/sync.js index check",
     "reindex": "node ./scripts/sync.js index reindex",
     "reindex-rich": "node ./scripts/sync.js index reindex-rich",

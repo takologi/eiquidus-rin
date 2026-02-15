@@ -42,3 +42,13 @@
 
 # To view logs:
 # tail -f /var/log/elquidus/dashboard_update.log
+
+
+# ----------------------------------------------------------------------
+# History Checkpoint Refresh (tx-based historical snapshots)
+# ----------------------------------------------------------------------
+# RECOMMENDED: Run every 6 hours with 50,000 tx checkpoint interval
+# 0 */6 * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js checkpoint 50000 >> /var/log/elquidus/checkpoint_update.log 2>&1
+
+# Faster refresh (every hour)
+# 0 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js checkpoint 50000 >> /var/log/elquidus/checkpoint_update.log 2>&1

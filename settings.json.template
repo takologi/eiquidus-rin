@@ -1658,6 +1658,9 @@
     "update_timeout": 10,
     // check_timeout: The amount of time to wait (in milliseconds) before moving to the next block or transaction during a check sync (/path/to/node scripts/sync.js check)
     "check_timeout": 250,
+    // checkpoint_tx_interval: Number of transactions between historical checkpoint snapshots when running /path/to/node scripts/sync.js checkpoint
+    //                         Lower values create more checkpoints (faster historical reads, more storage). Higher values create fewer checkpoints (less storage, more replay work).
+    "checkpoint_tx_interval": 50000,
     // save_stats_after_sync_blocks: During index syncronization, stats are saved after processing this many blocks to save time by not having to save after each block
     "save_stats_after_sync_blocks": 100,
     // show_sync_msg_when_syncing_more_than_blocks: Show the sync msg at the top of all pages during index syncronization if there are more than this many blocks to process

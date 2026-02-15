@@ -530,6 +530,8 @@ reindex          Clears index then resyncs from genesis to current block
 reindex-rich     Clears and recreates the richlist data
 reindex-txcount  Rescan and flatten the tx count value for faster access
 reindex-last     Rescan and flatten the last blockindex value for faster access
+checkpoint       Builds history checkpoints for faster historical reads
+                 Optional parameter: tx interval (default from sync.checkpoint_tx_interval)
 market           Updates market summaries, orderbooks, trade history + charts
 peers            Updates peer info based on local wallet connections
 masternodes      Updates the list of active masternodes on the network
@@ -539,6 +541,8 @@ Notes:
 - The market + peers databases only support (& defaults to) reindex mode.
 - If check mode finds missing data (other than new data since last sync),
   this likely means that sync.update_timeout in settings.json is set too low.
+- Checkpoint mode is optional but recommended for fast history browser queries.
+- If no interval is provided, checkpoint mode uses sync.checkpoint_tx_interval from settings.json.
 ```
 
 *It is recommended to do the initial syncing of your blockchain, markets, peers and masternodes using the manual commands below to ensure there are no sync issues. When you are sure that everything is syncing correctly, you should then install the necessary scripts to a crontab at 1+ minute intervals as indicated below*
@@ -551,6 +555,7 @@ A number of npm scripts are included with the explorer for easy syncing of the v
 - `npm run sync-markets`: Connect to the various exchange apis as defined in the `settings.json` file to provide market related data such as market summaries, orderbooks, trade history and charts.
 - `npm run sync-peers`: Connect to the wallet daemon and pull in data regarding connected nodes.
 - `npm run sync-masternodes`: Connect to the wallet daemon and pull in the list of active masternodes on the network. *\*only applicable to masternode coins*
+- `npm run sync-checkpoint`: Build or refresh historical checkpoints using the interval from `sync.checkpoint_tx_interval` in `settings.json`.
 
 A small handful of useful scripts are also included to assist in solving various issues you may experience with the explorer:
 
@@ -574,6 +579,7 @@ Easier crontab syntax using npm scripts, but may not work on some systems depend
 */5 * * * * cd /path/to/explorer && npm run sync-markets > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && npm run sync-peers > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && npm run sync-masternodes > /dev/null 2>&1
+0 */6 * * * cd /path/to/explorer && npm run sync-checkpoint > /dev/null 2>&1
 ```
 
 Or, run the crontab by calling the sync script directly, which should work better in the event you have problems running the npm scripts from a crontab:
@@ -584,6 +590,7 @@ Or, run the crontab by calling the sync script directly, which should work bette
 */5 * * * * cd /path/to/explorer && /path/to/node scripts/sync.js market > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && /path/to/node scripts/sync.js peers > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && /path/to/node scripts/sync.js masternodes > /dev/null 2>&1
+0 */6 * * * cd /path/to/explorer && /path/to/node scripts/sync.js checkpoint > /dev/null 2>&1
 ```
 
 ### Wallet Settings

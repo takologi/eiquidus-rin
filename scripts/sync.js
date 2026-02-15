@@ -9,6 +9,10 @@ const Orphans = require('../models/orphans');
 const Peers = require('../models/peers');
 const Richlist = require('../models/richlist');
 const Stats = require('../models/stats');
+const DashboardBlockStats = require('../models/dashboard_block_stats');
+const HistoryCheckpoint = require('../models/history_checkpoint');
+const HistoryWalletState = require('../models/history_wallet_state');
+const HistoryChainState = require('../models/history_chain_state');
 const settings = require('../lib/settings');
 const async = require('async');
 
@@ -18,6 +22,7 @@ settings.coin.name = (settings.coin.dbname || settings.coin.name);
 let mode = 'update';
 let database = 'index';
 let block_start = 1;
+let checkpoint_tx_interval = ((settings.sync != null && settings.sync.checkpoint_tx_interval != null && !isNaN(settings.sync.checkpoint_tx_interval) && Number(settings.sync.checkpoint_tx_interval) > 0) ? Number(settings.sync.checkpoint_tx_interval) : 50000);
 let lockCreated = false;
 let stopSync = false;
 let exiting = false;
@@ -125,6 +130,8 @@ function usage() {
   console.log('reindex-rich     Clears and recreates the richlist data');
   console.log('reindex-txcount  Rescan and flatten the tx count value for faster access');
   console.log('reindex-last     Rescan and flatten the last blockindex value for faster access');
+  console.log('checkpoint       Builds historical wallet checkpoints based on tx interval');
+  console.log('                 Optional parameter: tx interval (default: 50000)');
   console.log('market           Updates market summaries, orderbooks, trade history + charts');
   console.log('peers            Updates peer info based on local wallet connections');
   console.log('masternodes      Updates the list of active masternodes on the network');
@@ -1099,6 +1106,253 @@ function block_sync(reindex, stats) {
   });
 }
 
+async function bulk_upsert_wallet_state(checkpoint_height, rows) {
+  const batch_size = settings.sync.batch_size;
+  let index = 0;
+
+  while (index < rows.length) {
+    const batch = rows.slice(index, index + batch_size);
+    index += batch_size;
+
+    const ops = batch.map((row) => {
+      return {
+        updateOne: {
+          filter: {
+            checkpoint_height: checkpoint_height,
+            a_id: row._id
+          },
+          update: {
+            $set: {
+              checkpoint_height: checkpoint_height,
+              a_id: row._id,
+              address_sort: row.address_sort,
+              tx_count: row.tx_count,
+              deposited: row.deposited,
+              balance: row.balance,
+              withdrawn: row.withdrawn,
+              sent: row.withdrawn,
+              received: row.deposited,
+              last_to_block: row.last_to_block,
+              last_from_block: row.last_from_block
+            }
+          },
+          upsert: true
+        }
+      };
+    });
+
+    if (ops.length > 0)
+      await HistoryWalletState.bulkWrite(ops, { ordered: false });
+  }
+}
+
+function find_next_checkpoint_candidates(start_height, tx_interval, cb) {
+  let running_tx_since_checkpoint = 0;
+  let running_tx_total = 0;
+  let checkpoints = [];
+
+  // if a checkpoint already exists, continue from its tx_total
+  HistoryCheckpoint.findOne({}).sort({ height: -1 }).select('tx_total').lean().then((last_checkpoint) => {
+    if (last_checkpoint != null && last_checkpoint.tx_total != null)
+      running_tx_total = Number(last_checkpoint.tx_total);
+
+    Tx.find({ blockindex: { $gt: start_height } }).select('blockindex').sort({ blockindex: 1 }).lean().cursor().on('data', function(tx) {
+      running_tx_since_checkpoint++;
+      running_tx_total++;
+
+      if (running_tx_since_checkpoint >= tx_interval) {
+        checkpoints.push({
+          height: tx.blockindex,
+          tx_total: running_tx_total
+        });
+
+        running_tx_since_checkpoint = 0;
+      }
+    }).on('end', function() {
+      return cb(checkpoints);
+    }).on('error', function(err) {
+      console.log(err);
+      return cb([]);
+    });
+  }).catch((err) => {
+    console.log(err);
+    return cb([]);
+  });
+}
+
+function build_wallet_snapshot_for_height(height, cb) {
+  AddressTx.aggregate([
+    {
+      $match: {
+        blockindex: { $lte: Number(height) },
+        a_id: { $nin: ['coinbase', 'hidden_address', 'unknown_address'] }
+      }
+    },
+    {
+      $group: {
+        _id: '$a_id',
+        tx_count: { $sum: 1 },
+        deposited: {
+          $sum: {
+            $cond: [
+              { $gt: ['$amount', 0] },
+              '$amount',
+              0
+            ]
+          }
+        },
+        balance: { $sum: '$amount' },
+        withdrawn: {
+          $sum: {
+            $cond: [
+              { $lt: ['$amount', 0] },
+              { $abs: '$amount' },
+              0
+            ]
+          }
+        },
+        last_to_block: {
+          $max: {
+            $cond: [
+              { $gt: ['$amount', 0] },
+              '$blockindex',
+              0
+            ]
+          }
+        },
+        last_from_block: {
+          $max: {
+            $cond: [
+              { $lt: ['$amount', 0] },
+              '$blockindex',
+              0
+            ]
+          }
+        }
+      }
+    },
+    {
+      $addFields: {
+        address_sort: { $toString: '$_id' }
+      }
+    }
+  ], { allowDiskUse: true }).then((rows) => {
+    return cb(rows || []);
+  }).catch((err) => {
+    console.log(err);
+    return cb([]);
+  });
+}
+
+function update_chain_snapshot_for_height(height, tx_total, cb) {
+  Promise.all([
+    DashboardBlockStats.findOne({ height: Number(height) }).select('height hash time difficulty').lean(),
+    DashboardBlockStats.aggregate([
+      { $match: { height: { $lte: Number(height) } } },
+      { $group: { _id: null, total_reward: { $sum: '$block_reward' } } }
+    ]),
+    Tx.countDocuments({ blockindex: { $lte: Number(height) } })
+  ]).then(([block_stats, reward_rows, tx_count]) => {
+    const reward_total = (reward_rows != null && reward_rows.length > 0 ? Number(reward_rows[0].total_reward) : 0);
+
+    HistoryChainState.updateOne({
+      height: Number(height)
+    }, {
+      $set: {
+        height: Number(height),
+        tx_total: Number(tx_total),
+        supply: (reward_total / 100000000),
+        tx_count: Number(tx_count || 0),
+        hash: (block_stats && block_stats.hash ? block_stats.hash : ''),
+        time: (block_stats && block_stats.time ? Number(block_stats.time) : 0),
+        difficulty: (block_stats && block_stats.difficulty ? Number(block_stats.difficulty) : 0),
+        created_at: Math.floor(new Date() / 1000)
+      }
+    }, {
+      upsert: true
+    }).then(() => {
+      return cb(true);
+    }).catch((err) => {
+      console.log(err);
+      return cb(false);
+    });
+  }).catch((err) => {
+    console.log(err);
+    return cb(false);
+  });
+}
+
+function build_history_checkpoints(tx_interval, cb) {
+  HistoryCheckpoint.findOne({}).sort({ height: -1 }).select('height').lean().then((last_checkpoint) => {
+    const start_height = (last_checkpoint && last_checkpoint.height ? Number(last_checkpoint.height) : 0);
+
+    console.log('Building history checkpoints with tx interval = ' + tx_interval.toString());
+    console.log('Starting from block height ' + start_height.toString());
+
+    find_next_checkpoint_candidates(start_height, tx_interval, function(checkpoints) {
+      if (checkpoints == null || checkpoints.length == 0) {
+        console.log('No new checkpoints to build');
+        return cb();
+      }
+
+      console.log('Found ' + checkpoints.length.toString() + ' checkpoint candidates');
+
+      async.eachSeries(checkpoints, function(checkpoint, next_checkpoint) {
+        // avoid duplicate work if a checkpoint already exists at this exact height
+        HistoryCheckpoint.findOne({ height: checkpoint.height }).select('height').lean().then((exists) => {
+          if (exists) {
+            console.log('Skipping existing checkpoint at block ' + checkpoint.height.toString());
+            return next_checkpoint();
+          }
+
+          console.log('Creating checkpoint at block ' + checkpoint.height.toString() + ' (tx_total=' + checkpoint.tx_total.toString() + ')');
+
+          build_wallet_snapshot_for_height(checkpoint.height, function(rows) {
+            bulk_upsert_wallet_state(checkpoint.height, rows).then(() => {
+              update_chain_snapshot_for_height(checkpoint.height, checkpoint.tx_total, function(chain_ok) {
+                if (!chain_ok)
+                  console.log('Warning: failed to save chain state for checkpoint ' + checkpoint.height.toString());
+
+                HistoryCheckpoint.updateOne({
+                  height: checkpoint.height
+                }, {
+                  $set: {
+                    height: checkpoint.height,
+                    tx_total: checkpoint.tx_total,
+                    tx_interval: tx_interval,
+                    wallet_count: rows.length,
+                    created_at: Math.floor(new Date() / 1000)
+                  }
+                }, {
+                  upsert: true
+                }).then(() => {
+                  console.log('Checkpoint created for block ' + checkpoint.height.toString() + ' with ' + rows.length.toString() + ' wallets');
+                  return next_checkpoint();
+                }).catch((err) => {
+                  console.log(err);
+                  return next_checkpoint();
+                });
+              });
+            }).catch((err) => {
+              console.log(err);
+              return next_checkpoint();
+            });
+          });
+        }).catch((err) => {
+          console.log(err);
+          return next_checkpoint();
+        });
+      }, function() {
+        console.log('Checkpoint build complete');
+        return cb();
+      });
+    });
+  }).catch((err) => {
+    console.log(err);
+    return cb();
+  });
+}
+
 function process_peer_object(peerList, peer) {
   const table_types = [
     {
@@ -1332,7 +1586,17 @@ function update_address_count(cb) {
 }
 
 // check options
-if (process.argv[2] == null || process.argv[2] == 'index' || process.argv[2] == 'update') {
+if (process.argv[2] == null || process.argv[2] == 'index' || process.argv[2] == 'update' || process.argv[2] == 'checkpoint') {
+  if (process.argv[2] == 'checkpoint') {
+    mode = 'checkpoint';
+
+    if (!isNaN(process.argv[3]) && Number.isInteger(parseFloat(process.argv[3])) && parseInt(process.argv[3]) > 0)
+      checkpoint_tx_interval = parseInt(process.argv[3]);
+  }
+
+  if (mode == 'checkpoint') {
+    // already parsed above using `sync.js checkpoint [interval]`
+  } else {
   mode = null;
 
   switch (process.argv[3]) {
@@ -1366,8 +1630,16 @@ if (process.argv[2] == null || process.argv[2] == 'index' || process.argv[2] == 
     case 'reindex-last':
       mode = 'reindex-last';
       break;
+    case 'checkpoint':
+      mode = 'checkpoint';
+
+      if (!isNaN(process.argv[4]) && Number.isInteger(parseFloat(process.argv[4])) && parseInt(process.argv[4]) > 0)
+        checkpoint_tx_interval = parseInt(process.argv[4]);
+
+      break;
     default:
       usage();
+  }
   }
 } else if (process.argv[2] == 'peers' || process.argv[2] == 'masternodes')
   database = process.argv[2];
@@ -1583,6 +1855,16 @@ if (lib.is_locked([database]) == false) {
                   });
                 } else {
                   // update_db threw an error so exit
+                  exit(1);
+                }
+              });
+            } else if (mode == 'checkpoint') {
+              db.update_db(settings.coin.name, function(stats) {
+                if (stats !== false) {
+                  build_history_checkpoints(checkpoint_tx_interval, function() {
+                    exit(0);
+                  });
+                } else {
                   exit(1);
                 }
               });
