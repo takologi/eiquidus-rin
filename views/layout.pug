@@ -317,7 +317,7 @@ html(lang='en')
 
               setTimeout(function() {
                 rotateElementTwin(elementSelector1, elementSelector2);
-              }, 1500);
+              }, 15000);
             }
           });
         }
@@ -325,7 +325,7 @@ html(lang='en')
       function startRotateElementTwin(elementSelector1, elementSelector2) {
         setTimeout(function() {
           rotateElementTwin(elementSelector1, elementSelector2);
-        }, 100);
+        }, 30000);
       }
       function rotateElement(elementSelector) {
         const element = $(elementSelector);
@@ -341,7 +341,7 @@ html(lang='en')
             done: function() {
               setTimeout(function() {
                 rotateElement(elementSelector);
-              }, 1500);
+              }, 15000);
             }
           });
         }
@@ -349,7 +349,7 @@ html(lang='en')
       function startRotateElement(elementSelector) {
         setTimeout(function() {
           rotateElement(elementSelector);
-        }, 100);
+        }, 30000);
       }
       function update_block_and_connection_stats() {
         const summary_headers = {
