@@ -1,0 +1,75 @@
+# systemd service unit for the eIquidus ZMQ Block Listener daemon
+#
+# This template is ready to copy to /etc/systemd/system/. Adjust the
+# WorkingDirectory, User, Group, and ExecStart paths if your install
+# location or OS user differs from the defaults below.
+#
+# Quick-start:
+#   1. Copy this file:
+#        sudo cp /opt/eiquidus-test/contrib/zmq_listener.service \
+#                /etc/systemd/system/eiquidus-zmq-listener.service
+#
+#   2. (Optional) Edit WorkingDirectory / User / ExecStart if needed.
+#
+#   3. Reload systemd and enable:
+#        sudo systemctl daemon-reload
+#        sudo systemctl enable eiquidus-zmq-listener
+#        sudo systemctl start  eiquidus-zmq-listener
+#
+#   4. Check status:
+#        sudo systemctl status eiquidus-zmq-listener
+#        sudo journalctl -u eiquidus-zmq-listener -f
+#
+# Before starting, make sure:
+#   - settings.zmq_listener.enabled = true in settings.json
+#   - rincoin.conf contains: zmqpubhashblock=tcp://127.0.0.1:28332
+#   - Rincoin daemon is running
+
+[Unit]
+Description=eIquidus ZMQ Block Listener
+Documentation=file:///opt/eiquidus-test/docs/ZMQ_LISTENER.md
+
+# Start after the network and MongoDB are ready
+After=network.target mongod.service
+
+# If Rincoin is managed by systemd too, add it here:
+# After=network.target mongod.service rincoind.service
+# Wants=rincoind.service
+
+[Service]
+Type=simple
+
+# ── User / Group ──────────────────────────────────────────────────────────────
+# Change to the OS user that owns /opt/eiquidus-test
+User=root
+# Group=eiquidus
+
+# ── Working directory ─────────────────────────────────────────────────────────
+# settings.json is loaded relative to this path – must be the explorer root
+WorkingDirectory=/opt/eiquidus-test
+
+# ── Command ───────────────────────────────────────────────────────────────────
+# Use the full path to node. Run `which node` to verify.
+ExecStart=/root/.nvm/versions/node/v24.12.0/bin/node scripts/zmq_listener.js
+
+# ── Restart policy ────────────────────────────────────────────────────────────
+# Restart on any non-zero exit, including crashes
+Restart=on-failure
+RestartSec=10s
+
+# Give scripts time to finish cleanly before SIGKILL
+TimeoutStopSec=30s
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+# Logs are written to the system journal. View with:
+#   journalctl -u eiquidus-zmq-listener -f
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=eiquidus-zmq
+
+# ── Resource limits (optional, tune as needed) ────────────────────────────────
+# Limit log spam if ZMQ floods with unexpected messages
+# LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

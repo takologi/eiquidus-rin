@@ -2013,6 +2013,32 @@
     ]
   },
 
+  // zmq_listener: a collection of settings that pertain to the ZMQ block-notification listener daemon (scripts/zmq_listener.js)
+  //               The listener subscribes to the coin daemon's ZMQ publisher and triggers an incremental block sync
+  //               each time a new block is confirmed, replacing the need for a frequent cron-based sync job.
+  //               See docs/ZMQ_LISTENER.md for full setup instructions.
+  "zmq_listener": {
+    // enabled: Enable/disable the ZMQ listener feature (true/false)
+    //          When set to false the listener process exits immediately on startup
+    "enabled": false,
+    // endpoint: The tcp:// endpoint published by the coin daemon
+    //           Must match the zmqpubhashblock value in rincoin.conf
+    "endpoint": "tcp://127.0.0.1:28332",
+    // topics: ZMQ topics to subscribe to (array)
+    //         "hashblock" is sufficient for block sync triggering
+    //         Valid options: "hashblock", "hashtx", "rawblock", "rawtx", "sequence"
+    "topics": ["hashblock"],
+    // debounce_seconds: Seconds to wait after the last ZMQ notification before triggering a sync cycle
+    //                   Coalesces rapid notifications (e.g. during chain reorgs) into a single sync run
+    "debounce_seconds": 5,
+    // sync_cooldown_seconds: Minimum seconds between consecutive sync cycle starts
+    "sync_cooldown_seconds": 30,
+    // max_triggers_per_minute: Hard cap on sync cycles that can start in any 60-second window
+    "max_triggers_per_minute": 10,
+    // run_dashboard_update: Whether to also run scripts/update_dashboard.js after each sync cycle (true/false)
+    "run_dashboard_update": true
+  },
+
   // benchmark: a collection of settings that allow the benchmark to connect to MongoDB
   "benchmark": {
     // user: The MongoDB username used only for the benchmark script
