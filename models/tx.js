@@ -16,5 +16,8 @@ var TxSchema = new Schema({
 }, {id: false});
 
 TxSchema.index({total: 1, total: -1, blockindex: 1, blockindex: -1});
+TxSchema.index({timestamp: 1, blockindex: 1});
+TxSchema.index({blockindex: 1, timestamp: 1});
+TxSchema.index({total: 1, timestamp: 1});
 
 module.exports = mongoose.model('Tx', TxSchema);
