@@ -4,8 +4,10 @@ const settings = require('../lib/settings');
 const db = require('../lib/database');
 const lib = require('../lib/explorer');
 const async = require('async');
+const Orphans = require('../models/orphans');
 
-function send_block_data(res, block, txs, title_text, orphan) {
+function send_block_data(res, block, txs, title_text, orphan, orphan_siblings) {
+  if (orphan_siblings === undefined) orphan_siblings = null;
   let extracted_by_addresses = [];
 
   // check if the extracted by addresses should be found
@@ -18,19 +20,23 @@ function send_block_data(res, block, txs, title_text, orphan) {
 
     // add claim name data to the array
     db.get_extracted_by_claim_names(extracted_by_addresses, function(updated_extracted_by_addresses) {
-      finalize_send_block_data(res, block, txs, title_text, orphan, updated_extracted_by_addresses);
+      finalize_send_block_data(res, block, txs, title_text, orphan, updated_extracted_by_addresses, orphan_siblings);
     });
   } else
-    finalize_send_block_data(res, block, txs, title_text, orphan, extracted_by_addresses);
+    finalize_send_block_data(res, block, txs, title_text, orphan, extracted_by_addresses, orphan_siblings);
 }
 
-function finalize_send_block_data(res, block, txs, title_text, orphan, extracted_by_addresses) {
+function finalize_send_block_data(res, block, txs, title_text, orphan, extracted_by_addresses, orphan_siblings) {
+  if (orphan_siblings === undefined) orphan_siblings = null;
   res.render(
     'block',
     {
       active: 'block',
       block: block,
       orphan: orphan,
+      orphan_siblings: orphan_siblings,
+      reorg_warning_depth: settings.orphans_page.reorg_warning_depth,
+      reorg_critical_depth: settings.orphans_page.reorg_critical_depth,
       confirmations: settings.shared_pages.confirmations,
       txs: txs,
       extracted_by_addresses: extracted_by_addresses,
@@ -228,9 +234,14 @@ function route_get_block(res, blockhash) {
         get_block_data_from_wallet(block, res, true);
       } else {
         db.get_txs(block, function(txs) {
-          if (txs.length > 0)
-            send_block_data(res, block, txs, 'Block ' + block.height, null);
-          else {
+          if (txs.length > 0) {
+            // query for any orphaned blocks that this canonical block displaced
+            Orphans.find({blockindex: block.height, good_blockhash: block.hash}).lean().exec().then(function(siblings) {
+              send_block_data(res, block, txs, 'Block ' + block.height, null, (siblings && siblings.length > 0 ? siblings : null));
+            }).catch(function() {
+              send_block_data(res, block, txs, 'Block ' + block.height, null, null);
+            });
+          } else {
             // cannot find block in local database so get the data from the wallet directly
             get_block_data_from_wallet(block, res, false);
           }

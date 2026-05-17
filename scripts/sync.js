@@ -6,6 +6,7 @@ const Tx = require('../models/tx');
 const Address = require('../models/address');
 const AddressTx = require('../models/addresstx');
 const Orphans = require('../models/orphans');
+const OrphanedTx = require('../models/orphaned_tx');
 const Peers = require('../models/peers');
 const Richlist = require('../models/richlist');
 const Stats = require('../models/stats');
@@ -179,6 +180,7 @@ function update_orphans(orphan_index, orphan_current, last_blockindex, timeout, 
       let current_block = (orphan_current == 0 ? orphan_index : orphan_current);
       let unresolved_forks = [];
       let correct_block_data = null;
+      let reorgEventDepth = 0;
 
       // loop infinitely until finished iterating through all known blocks
       async.forever(function(next) {
@@ -236,6 +238,9 @@ function update_orphans(orphan_index, orphan_current, last_blockindex, timeout, 
 
                       console.log('Good ' + current_block.toString() + ' block found. Returning to fix block ' + unresolved_forks[unresolved_forks.length -1].toString());
 
+                      // capture reorg depth before popping (length before pop = total orphaned heights)
+                      reorgEventDepth = Math.max(reorgEventDepth, unresolved_forks.length);
+
                       // go back to the last unresolved fork
                       current_block = unresolved_forks.pop();
 
@@ -272,8 +277,41 @@ function update_orphans(orphan_index, orphan_current, last_blockindex, timeout, 
 
                     // find all orphaned txid's from the current orphan block hash
                     get_orphaned_txids(blockhashes[i], function(txids) {
+                      var orphanTxCount = (txids == null ? 0 : txids.length);
+                      var orphanBlockhash = blockhashes[i];
+
+                      // snapshot full TX records to the orphaned_tx archive before deletion
+                      Tx.find({blockhash: orphanBlockhash}).lean().exec().then(function(orphanTxDocs) {
+                        if (orphanTxDocs != null && orphanTxDocs.length > 0) {
+                          var archiveDocs = orphanTxDocs.map(function(doc) {
+                            return {
+                              txid: doc.txid,
+                              vin: doc.vin,
+                              vout: doc.vout,
+                              total: doc.total,
+                              timestamp: doc.timestamp,
+                              blockhash: doc.blockhash,
+                              blockindex: doc.blockindex,
+                              tx_type: doc.tx_type,
+                              op_return: doc.op_return,
+                              algo: doc.algo,
+                              orphan_blockhash: orphanBlockhash,
+                              orphaned_at: new Date()
+                            };
+                          });
+
+                          OrphanedTx.insertMany(archiveDocs, {ordered: false}).catch(function(e) {
+                            // duplicate key errors (re-run) are silently ignored; log unexpected errors
+                            if (e != null && e.toString().indexOf('E11000') == -1 && e.toString().indexOf('duplicate key') == -1)
+                              console.log('OrphanedTx archive warning: ' + e);
+                          });
+                        }
+                      }).catch(function(e) {
+                        console.log('OrphanedTx archive error: ' + e);
+                      });
+
                       // save the orphan block data to the orphan collection
-                      create_orphan(current_block, blockhashes[i], correct_block_data.prev_hash, block_data.previousblockhash, correct_block_data.next_hash, function() {
+                      create_orphan(current_block, orphanBlockhash, correct_block_data.prev_hash, block_data.previousblockhash, correct_block_data.next_hash, orphanTxCount, reorgEventDepth, new Date(), function() {
                         // loop through the remaining orphaned block hashes
                         async.eachSeries(txids, function(current_txid, tx_loop) {
                           // remove the orphaned tx and cleanup all associated data
@@ -329,6 +367,10 @@ function update_orphans(orphan_index, orphan_current, last_blockindex, timeout, 
                             // clear the saved block hash data
                             correct_block_data = null;
 
+                            // reset reorg depth tracker when all forks have been resolved
+                            if (unresolved_forks.length == 0)
+                              reorgEventDepth = 0;
+
                             // move to the next block
                             current_block++;
 
@@ -341,6 +383,10 @@ function update_orphans(orphan_index, orphan_current, last_blockindex, timeout, 
 
                             // clear the saved block hash data
                             correct_block_data = null;
+
+                            // reset reorg depth tracker when all forks have been resolved
+                            if (unresolved_forks.length == 0)
+                              reorgEventDepth = 0;
 
                             // move to the next block
                             current_block++;
@@ -568,13 +614,16 @@ function check_block_height_for_fork(block_height, cb) {
   });
 }
 
-function create_orphan(blockindex, orphan_blockhash, good_blockhash, prev_blockhash, next_blockhash, cb) {
+function create_orphan(blockindex, orphan_blockhash, good_blockhash, prev_blockhash, next_blockhash, tx_count, reorg_depth, detected_at, cb) {
   var newOrphan = new Orphans({
     blockindex: blockindex,
     orphan_blockhash: orphan_blockhash,
     good_blockhash: good_blockhash,
     prev_blockhash: prev_blockhash,
-    next_blockhash: next_blockhash
+    next_blockhash: next_blockhash,
+    tx_count: (tx_count || 0),
+    reorg_depth: (reorg_depth > 0 ? reorg_depth : 1),
+    detected_at: (detected_at || new Date())
   });
 
   // create a new orphan record in the local database

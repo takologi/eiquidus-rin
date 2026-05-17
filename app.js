@@ -1066,6 +1066,9 @@ app.use('/ext/getorphanlist/:start/:length', function(req, res) {
         row.push(orphans[i].good_blockhash);
         row.push(orphans[i].prev_blockhash);
         row.push(orphans[i].next_blockhash);
+        row.push(orphans[i].reorg_depth || 1);
+        row.push(orphans[i].tx_count || 0);
+        row.push(orphans[i].detected_at ? Math.floor(new Date(orphans[i].detected_at).getTime() / 1000) : 0);
 
         data.push(row);
       }

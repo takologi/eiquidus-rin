@@ -4,6 +4,8 @@ block content
   script.
     var setting_maxTxCount = parseInt("#{settings.api_page.public_apis.ext.getlasttxs.max_items_per_query}");
     var setting_txPerPage = parseInt("#{settings.index_page.transaction_table.items_per_page}");
+    var reorgWarnDepth = #{settings.orphans_page.reorg_warning_depth};
+    var reorgCritDepth = #{settings.orphans_page.reorg_critical_depth};
     var lengthMenuOptsAdd = !{JSON.stringify(settings.index_page.transaction_table.page_length_options)};
     var lengthMenuOpts = [];
     var addedLength = false;
@@ -34,6 +36,12 @@ block content
       var displayLengthMax = setting_maxTxCount;
     else
       var displayLengthMax = setting_txPerPage;
+    function buildReorgBadge(depth) {
+      if (!depth || depth <= 0) return '';
+      var excl = '!'.repeat(Math.min(depth - 1, 9));
+      var cls = (reorgCritDepth > 0 && depth >= reorgCritDepth) ? 'bg-danger' : (reorgWarnDepth > 0 && depth >= reorgWarnDepth) ? 'bg-warning text-dark' : 'bg-secondary';
+      return ' <span class="badge ' + cls + '" title="Reorg depth ' + depth + '">R' + excl + '</span>';
+    }
     $(document).ready(function() {
       var timestampColumnIndex = 5;
 
@@ -107,8 +115,13 @@ block content
           const timestamp = data[5];
           let offset = 0;
 
+          // extract orphan depth from last element (format: 'orphan_depth:N')
+          const lastElem = data[data.length - 1];
+          const orphanDepth = (typeof lastElem === 'string' && lastElem.indexOf('orphan_depth:') === 0)
+            ? parseInt(lastElem.substring('orphan_depth:'.length)) : 0;
+
           $("td:eq(0)", row).html('<a href="/tx/' + txhash + '"><span class="fa-regular fa-eye" data-bs-toggle="tooltip" data-bs-placement="top" title="#{settings.localization.view_tx}"></span></a>').addClass('text-center d-table-cell d-md-none');
-          $("td:eq(1)", row).html('<a href="/block/' + blockhash + '">' + blockindex + '</a>');
+          $("td:eq(1)", row).html('<a href="/block/' + blockhash + '">' + blockindex + '</a>' + buildReorgBadge(orphanDepth));
           $("td:eq(2)", row).html('<a href="/tx/' + txhash + '">' + txhash + '</a>').addClass("text-center breakWord d-none d-md-table-cell");
           $("td:eq(3)", row).html(outputs).addClass("text-center d-none d-sm-table-cell");
           $("td:eq(4)", row).html(updatedAmount);

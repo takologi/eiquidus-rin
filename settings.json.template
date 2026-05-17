@@ -1647,7 +1647,15 @@
       "page_length_options": [ 10, 25, 50, 75, 100, 250, 500, 1000 ],
       // items_per_page: The default amount of items/records to display in the table at any given time
       "items_per_page": 10
-    }
+    },
+    // reorg_warning_depth: Reorg depth at which to show a warning (orange) badge next to block heights in the TX table and on the block detail page
+    //                      A depth of 1 means a single orphaned block was found at that height (normal)
+    //                      Depths >= reorg_warning_depth indicate a multi-block reorganisation (uncommon)
+    //                      Set to 0 to disable warning badges
+    "reorg_warning_depth": 2,
+    // reorg_critical_depth: Reorg depth at which to upgrade the badge to critical (red) colour
+    //                       Set to 0 to disable critical badges
+    "reorg_critical_depth": 6
   },
 
   // sync: a collection of settings that pertain to the data synchronization process
@@ -2032,7 +2040,9 @@
     //                   Coalesces rapid notifications (e.g. during chain reorgs) into a single sync run
     "debounce_seconds": 5,
     // sync_cooldown_seconds: Minimum seconds between consecutive sync cycle starts
-    "sync_cooldown_seconds": 30,
+    //                        Set to 0 to disable (recommended when using ZMQ; the debounce already coalesces bursts)
+    //                        Set to 30 or higher only for non-ZMQ installs that run sync from cron
+    "sync_cooldown_seconds": 0,
     // max_triggers_per_minute: Hard cap on sync cycles that can start in any 60-second window
     "max_triggers_per_minute": 10,
     // run_dashboard_update: Whether to also run scripts/update_dashboard.js after each sync cycle (true/false)

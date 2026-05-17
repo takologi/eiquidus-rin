@@ -6,7 +6,10 @@ var OrphanSchema = new Schema({
   orphan_blockhash: {type: String, unique: true, index: true},
   good_blockhash: {type: String, index: true},
   prev_blockhash: {type: String, index: true},
-  next_blockhash: {type: String, index: true}
+  next_blockhash: {type: String, index: true},
+  detected_at: {type: Date},
+  reorg_depth: {type: Number, default: 1, index: true},
+  tx_count: {type: Number, default: 0}
 }, {id: false});
 
 module.exports = mongoose.model('Orphan', OrphanSchema);

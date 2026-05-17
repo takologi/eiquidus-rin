@@ -37,6 +37,17 @@ block content
             span.fa-solid.fa-triangle-exclamation(style='margin-right:5px')
             strong=settings.localization.ex_warning
           div="This is an orphaned block"
+    if orphan_siblings != null && orphan_siblings.length > 0
+      - var maxReorgDepth = Math.max.apply(null, orphan_siblings.map(function(s) { return s.reorg_depth || 1; }))
+      - var siblingAlertClass = (reorg_critical_depth > 0 && maxReorgDepth >= reorg_critical_depth) ? 'alert-danger' : (reorg_warning_depth > 0 && maxReorgDepth >= reorg_warning_depth) ? 'alert-warning' : 'alert-secondary'
+      .col-12
+        .alert(class=siblingAlertClass, role='alert')
+          span.fa-solid.fa-code-fork(style='margin-right:5px')
+          = orphan_siblings.length + ' competing orphaned block' + (orphan_siblings.length === 1 ? '' : 's') + ' found at this height (reorg depth ' + maxReorgDepth + '):'
+          each sib in orphan_siblings
+            |  
+            a(href='/block/' + sib.orphan_blockhash) #{sib.orphan_blockhash.substring(0, 20)}...
+            |  (depth #{sib.reorg_depth || 1}#{sib.tx_count > 0 ? ', ' + sib.tx_count + ' tx' : ''})
     if settings.block_page.page_header.show_img == true || settings.block_page.page_header.show_title == true || settings.block_page.page_header.show_description == true
       #page-header-container(style='align-items:' + (settings.block_page.page_header.show_img == true && settings.block_page.page_header.show_title == true && settings.block_page.page_header.show_description == true ? 'flex-start' : 'center'))
         if settings.block_page.page_header.show_img == true

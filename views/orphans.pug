@@ -3,6 +3,8 @@ extends layout
 block content
   script.
     var setting_txPerPage = parseInt("#{settings.orphans_page.orphans_table.items_per_page}");
+    var reorgWarnDepth = #{settings.orphans_page.reorg_warning_depth};
+    var reorgCritDepth = #{settings.orphans_page.reorg_critical_depth};
     var lengthMenuOpts = !{JSON.stringify(settings.orphans_page.orphans_table.page_length_options)};
     var addedLength = false;
     for (i = 0; i < lengthMenuOpts.length; i++) {
@@ -16,6 +18,12 @@ block content
     }
     if (!addedLength && setting_txPerPage != lengthMenuOpts[lengthMenuOpts.length - 1])
       lengthMenuOpts.push(setting_txPerPage);
+    function buildReorgBadge(depth) {
+      if (!depth || depth <= 0) return '';
+      var excl = '!'.repeat(Math.min(depth - 1, 9));
+      var cls = (reorgCritDepth > 0 && depth >= reorgCritDepth) ? 'bg-danger' : (reorgWarnDepth > 0 && depth >= reorgWarnDepth) ? 'bg-warning text-dark' : 'bg-secondary';
+      return ' <span class="badge ' + cls + '" title="Reorg depth ' + depth + '">R' + excl + '</span>';
+    }
     $(document).ready(function() {
       var otable = $('#orphans-table').dataTable({
         autoWidth: true,
@@ -46,6 +54,9 @@ block content
           var good_blockhash = data[2];
           var prev_blockhash = data[3];
           var next_blockhash = data[4];
+          var reorg_depth = data[5] || 1;
+          var tx_count = data[6] || 0;
+          var detected_ts = data[7] || 0;
           $("td:eq(0)", row).html('<a href="/block/' + orphan_blockhash + '"><span class="fa-regular fa-eye" data-bs-toggle="tooltip" data-bs-placement="top" title="#{settings.localization.view_orphan}"></span></a>').addClass('text-center d-table-cell d-md-none');
           $("td:eq(1)", row).html('<a href="/block/' + orphan_blockhash + '">' + orphan_blockhash + '</a>').addClass('breakWord d-none d-md-table-cell');
           $("td:eq(2)", row).html('<a href="/block/' + good_blockhash + '">' + blockindex.toString() + '</a>').addClass('text-center');
@@ -55,6 +66,10 @@ block content
             $("td:eq(4)", row).html('&nbsp;');
           else
             $("td:eq(4)", row).html('<a href="/block/' + next_blockhash + '">' + (blockindex + 1).toString() + '</a>').addClass('text-center');
+
+          $("td:eq(5)", row).html(buildReorgBadge(reorg_depth) + ' ' + reorg_depth).addClass('text-center');
+          $("td:eq(6)", row).html(tx_count).addClass('text-center');
+          $("td:eq(7)", row).html(detected_ts > 0 ? format_unixtime(detected_ts) : '&mdash;').addClass('text-center');
         },
         fnDrawCallback: function(settings) {
           fixDataTableColumns();
@@ -120,4 +135,7 @@ block content
             th.text-center #{settings.localization.orphan_actual_block}
             th.text-center #{settings.localization.orphan_prev_block}
             th.text-center #{settings.localization.orphan_next_block}
+            th.text-center Depth
+            th.text-center TXes
+            th.text-center Detected
         tbody

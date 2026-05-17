@@ -41,7 +41,7 @@ const ENDPOINT    = cfg.endpoint                 || 'tcp://127.0.0.1:28332';
 const TOPICS      = Array.isArray(cfg.topics) && cfg.topics.length > 0
                       ? cfg.topics : ['hashblock'];
 const DEBOUNCE_MS = (cfg.debounce_seconds      || 5)  * 1000;
-const COOLDOWN_MS = (cfg.sync_cooldown_seconds || 30) * 1000;
+const COOLDOWN_MS = (cfg.sync_cooldown_seconds != null ? cfg.sync_cooldown_seconds : 0) * 1000;
 const MAX_PER_MIN = cfg.max_triggers_per_minute  || 10;
 const RUN_DASH    = cfg.run_dashboard_update !== false;
 
