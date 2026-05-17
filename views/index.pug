@@ -36,10 +36,13 @@ block content
       var displayLengthMax = setting_maxTxCount;
     else
       var displayLengthMax = setting_txPerPage;
+    function buildReorgClass(depth) {
+      return (reorgCritDepth > 0 && depth >= reorgCritDepth) ? 'bg-danger' : (reorgWarnDepth > 0 && depth >= reorgWarnDepth) ? 'bg-warning text-dark' : 'bg-secondary';
+    }
     function buildReorgBadge(depth) {
       if (!depth || depth <= 0) return '';
       var excl = '!'.repeat(Math.min(depth - 1, 9));
-      var cls = (reorgCritDepth > 0 && depth >= reorgCritDepth) ? 'bg-danger' : (reorgWarnDepth > 0 && depth >= reorgWarnDepth) ? 'bg-warning text-dark' : 'bg-secondary';
+      var cls = buildReorgClass(depth);
       return ' <span class="badge ' + cls + '" title="Reorg depth ' + depth + '">R' + excl + '</span>';
     }
     $(document).ready(function() {
@@ -119,12 +122,13 @@ block content
           const lastElem = data[data.length - 1];
           const orphanDepth = (typeof lastElem === 'string' && lastElem.indexOf('orphan_depth:') === 0)
             ? parseInt(lastElem.substring('orphan_depth:'.length)) : 0;
+          if (orphanDepth > 0) $(row).addClass(buildReorgClass(orphanDepth));
 
           $("td:eq(0)", row).html('<a href="/tx/' + txhash + '"><span class="fa-regular fa-eye" data-bs-toggle="tooltip" data-bs-placement="top" title="#{settings.localization.view_tx}"></span></a>').addClass('text-center d-table-cell d-md-none');
-          $("td:eq(1)", row).html('<a href="/block/' + blockhash + '">' + blockindex + '</a>' + buildReorgBadge(orphanDepth));
+          $("td:eq(1)", row).html(buildReorgBadge(orphanDepth) + '<a href="/block/' + blockhash + '">' + blockindex + '</a>').addClass('text-end');
           $("td:eq(2)", row).html('<a href="/tx/' + txhash + '">' + txhash + '</a>').addClass("text-center breakWord d-none d-md-table-cell");
           $("td:eq(3)", row).html(outputs).addClass("text-center d-none d-sm-table-cell");
-          $("td:eq(4)", row).html(updatedAmount);
+          $("td:eq(4)", row).html(updatedAmount).addClass("text-end text-nowrap");
 
           if (#{settings.block_page.multi_algorithm.show_algo} == true) {
             const algo = (data.length > 6 && data[6].indexOf('algo:') == 0 ? data[6].substring('algo:'.length) : '');
@@ -284,4 +288,4 @@ block content
             if settings.index_page.show_extracted_by == true
               th.text-center="Extracted By"
             th.text-center #{settings.localization.timestamp}
-        tbody.text-center
+        tbody
