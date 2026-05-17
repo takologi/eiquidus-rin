@@ -27,7 +27,7 @@
 
 [Unit]
 Description=eIquidus ZMQ Block Listener
-Documentation=file:///opt/eiquidus-test/docs/ZMQ_LISTENER.md
+Documentation=file:///opt/eiquidus/docs/ZMQ_LISTENER.md
 
 # Start after the network and MongoDB are ready
 After=network.target mongod.service
