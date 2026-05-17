@@ -358,6 +358,11 @@ function update_orphans(orphan_index, orphan_current, last_blockindex, timeout, 
                       Stats.findOne({coin: settings.coin.name}).then((stats) => {
                         // add missing txes for the current block
                         blkSync.update_tx_db(settings.coin.name, current_block, current_block, (stats.txes + tx_count), timeout, 2, function(updated_tx_count) {
+                          // mark canonical TXes at this height as belonging to a reorged block
+                          Tx.updateMany({blockindex: current_block}, {$set: {has_reorg: true}}).catch(function(e) {
+                            console.log('has_reorg mark error: ' + e);
+                          });
+
                           // update the stats collection by removing the orphaned txes in this block from the tx count
                           // and setting the orphan_index and orphan_current values in case the sync is interrupted before finishing
                           Stats.updateOne({coin: settings.coin.name}, {
