@@ -102,3 +102,7 @@ backups/
 
 # Test scripts (development only)
 test_*.js
+
+# VS Code files
+.vscode/
+*.code-workspace
