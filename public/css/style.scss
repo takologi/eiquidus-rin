@@ -811,8 +811,12 @@ $theme-name: string.to-lower-case(theme-selector.$theme-name);
   }
 }
 
+html {
+  font-size: 87.5%; // 87.5% of 16px = 14px; scales all rem-based Bootstrap spacing down by 12.5%
+}
+
 body {
-  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+  font-family: "Lucida Grande", Helvetica, Arial, sans-serif;
 }
 
 p {
@@ -1129,6 +1133,12 @@ tr {
   }
   li#markets > div.dropdown-menu {
     border: 0;
+  }
+}
+
+@media(min-width:1920px) {
+  html {
+    font-size: 81.25%; // 81.25% of 16px = 13px; scales down for large monitors and 4K at 200% DPI
   }
 }
 
