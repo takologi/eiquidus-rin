@@ -1525,6 +1525,16 @@
           //                    If enabled, a new field will be added to the /ext/getlasttxs api endpoint that displays the address(es) that mined the block for the coinbase transaction only
           "show_extracted_by": false
         },
+        // getlastorphans: a collection of settings that pertain to the /ext/getlastorphans api endpoint
+        //                 Returns orphaned blocks with reorg depth greater than a specific value, starting from a particular offset
+        //                 NOTE: This api is not used internally and is therefore only publicly available
+        "getlastorphans": {
+          // enabled: Enable/disable the /ext/getlastorphans api endpoint (true/false)
+          //          If set to false, the /ext/getlastorphans api will be completely disabled for public use (no definition on the api page and a disabled error msg if you try to call the endpoint directly)
+          "enabled": true,
+          // max_items_per_query: The maximum # of orphaned blocks that can be returned from the /ext/getlastorphans api endpoint in a single call
+          "max_items_per_query": 100
+        },
         // getcurrentprice: a collection of settings that pertain to the /ext/getcurrentprice api endpoint
         //                  Returns last known exchange price
         //                  NOTE: This api is not used internally and is therefore only publicly available

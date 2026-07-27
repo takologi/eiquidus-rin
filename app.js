@@ -702,6 +702,65 @@ app.use('/ext/getlasttxs/:min', function(req, res) {
     res.end(settings.localization.method_disabled);
 });
 
+app.use('/ext/getlastorphans/:min', function(req, res) {
+  const getlastorphansConfig = (settings.api_page != null && settings.api_page.public_apis != null && settings.api_page.public_apis.ext != null && settings.api_page.public_apis.ext.getlastorphans != null
+    ? settings.api_page.public_apis.ext.getlastorphans
+    : { enabled: true, max_items_per_query: 100 });
+
+  // check if the getlastorphans api is enabled
+  if (settings.api_page.enabled == true && getlastorphansConfig.enabled == true) {
+    var min = req.params.min, start, length;
+    // split url suffix by forward slash and remove blank entries
+    var split = req.url.split('/').filter(function(v) { return v; });
+
+    // determine how many parameters were passed
+    switch (split.length) {
+      case 2:
+        // capture start and length
+        start = split[0];
+        length = split[1];
+        break;
+      default:
+        if (split.length == 1) {
+          // capture start
+          start = split[0];
+        } else if (split.length >= 2) {
+          // capture start and length
+          start = split[0];
+          length = split[1];
+        }
+
+        break;
+    }
+
+    // fix and clamp parameters
+    const parsedLength = Number.parseInt(length, 10);
+    const parsedStart = Number.parseInt(start, 10);
+    const parsedMin = Number.parseInt(min, 10);
+
+    if (Number.isNaN(parsedLength) || parsedLength < 1)
+      length = getlastorphansConfig.max_items_per_query;
+    else
+      length = Math.min(parsedLength, getlastorphansConfig.max_items_per_query);
+
+    if (Number.isNaN(parsedStart) || parsedStart < 0)
+      start = 0;
+    else
+      start = parsedStart;
+
+    if (Number.isNaN(parsedMin) || parsedMin < 0)
+      min = 0;
+    else
+      min = parsedMin;
+
+    db.get_last_orphans(start, length, min, function(data) {
+      // display data in readable format for public api
+      res.json(data);
+    });
+  } else
+    res.end(settings.localization.method_disabled);
+});
+
 app.use('/ext/getaddresstxs/:address/:start/:length', function(req, res) {
   // check if the getaddresstxs api is enabled or else check the headers to see if it matches an internal ajax request from the explorer itself (TODO: come up with a more secure method of whitelisting ajax calls from the explorer)
   if ((settings.api_page.enabled == true && settings.api_page.public_apis.ext.getaddresstxs.enabled == true) || (req.headers['x-requested-with'] != null && req.headers['x-requested-with'].toLowerCase() == 'xmlhttprequest' && req.headers.referer != null && req.headers.accept.indexOf('text/javascript') > -1 && req.headers.accept.indexOf('application/json') > -1)) {
