@@ -25,6 +25,7 @@ let database = 'index';
 let block_start = 1;
 let checkpoint_tx_interval = ((settings.sync != null && settings.sync.checkpoint_tx_interval != null && !isNaN(settings.sync.checkpoint_tx_interval) && Number(settings.sync.checkpoint_tx_interval) > 0) ? Number(settings.sync.checkpoint_tx_interval) : 50000);
 let lockCreated = false;
+let watchdogTimer = null;
 let stopSync = false;
 let exiting = false;
 
@@ -76,6 +77,52 @@ function testPortOpen(host, port = 9555, timeout = 500) {
 // async wrapper for testing peer connectivity
 async function isPeerReachable(ip) {
   return await testPortOpen(ip, 9555, 500);
+}
+
+// builds the 'self' peer entry from getnetworkinfo data
+// returns null when this node should not be listed as a peer
+function build_self_peer(info) {
+  try {
+    if (!info || !info.localaddresses || !info.connections) {
+      console.log('Skipping self-peer: insufficient networkinfo');
+      return null;
+    }
+
+    // Find a valid public IPv4 address (exclude private ranges)
+    const publicAddr = info.localaddresses.find(addr =>
+      addr.address &&
+      /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/.test(addr.address) &&
+      !addr.address.startsWith('10.') &&
+      !addr.address.startsWith('192.168.') &&
+      !addr.address.startsWith('172.')
+    );
+
+    if (!publicAddr) {
+      console.log('Skipping self-peer: no public IP address');
+      return null;
+    }
+
+    // Check for inbound connections (means P2P port reachable)
+    if (info.connections_in < 1) {
+      console.log('Skipping self-peer: no inbound connections');
+      return null;
+    }
+
+    const address = publicAddr.address;
+    const port = publicAddr.port || settings.port || 9555;
+
+    return {
+      id: -1,
+      addr: address + ':' + port,
+      version: info.protocolversion,
+      subver: info.subversion,
+      connection_type: 'self',
+      inbound: false
+    };
+  } catch(e) {
+    console.log('Self-peer error:', e);
+    return null;
+  }
 }
 
 // prevent stopping of the sync script to be able to gracefully shut down
@@ -146,8 +193,59 @@ function usage() {
   process.exit(100);
 }
 
+// determine how long this sync type is allowed to run before the watchdog kills it
+// returns 0 or less to disable the watchdog
+function get_watchdog_minutes() {
+  // allow an override for unusual runs (SYNC_WATCHDOG_MINUTES=0 disables the watchdog)
+  if (process.env.SYNC_WATCHDOG_MINUTES != null && process.env.SYNC_WATCHDOG_MINUTES !== '')
+    return parseInt(process.env.SYNC_WATCHDOG_MINUTES);
+
+  switch (database) {
+    case 'peers':
+    case 'masternodes':
+    case 'markets':
+    case 'historical':
+      // these all run on a short cron interval and should finish in seconds
+      return 15;
+    case 'index':
+      // block syncing can legitimately run for hours when reindexing or catching
+      // up from far behind, so only guard the incremental mode that cron runs
+      return (mode == 'update' ? 360 : 0);
+    default:
+      return 0;
+  }
+}
+
+// starts a watchdog that force-exits the script if it runs longer than expected.
+// this is the safety net for any hang: without it a stuck script keeps its lock
+// file forever, and because the process is still alive the stale-lock check in
+// lib.is_locked() cannot clear it, silently blocking every future run
+function start_watchdog() {
+  const minutes = get_watchdog_minutes();
+
+  if (isNaN(minutes) || minutes <= 0)
+    return;
+
+  watchdogTimer = setTimeout(function() {
+    console.log(`Watchdog: ${database} sync exceeded ${minutes} minute(s) - forcing exit to release the lock`);
+
+    // release the lock directly rather than via exit(), since whatever is hung
+    // could just as easily hang a graceful mongoose shutdown
+    if (lockCreated)
+      lib.remove_lock(database);
+
+    process.exit(1);
+  }, minutes * 60000);
+}
+
 // exit function used to cleanup before finishing script
 function exit(exitCode) {
+  // stop the watchdog so it cannot fire during a normal shutdown
+  if (watchdogTimer != null) {
+    clearTimeout(watchdogTimer);
+    watchdogTimer = null;
+  }
+
   // always disconnect mongo connection
   mongoose.disconnect();
 
@@ -1711,6 +1809,8 @@ if (lib.is_locked([database]) == false) {
   }
   // ensure the lock will be deleted on exit
   lockCreated = true;
+  // start the watchdog so a hang can never hold the lock indefinitely
+  start_watchdog();
   // check the backup, restore and delete locks since those functions would be problematic when updating data
   if (lib.is_locked(['backup', 'restore', 'delete']) == false) {
     // all tests passed. OK to run sync
@@ -1930,50 +2030,15 @@ if (lib.is_locked([database]) == false) {
         lib.get_peerinfo(function(body) {
           // add self-peer
           lib.get_networkinfo(function(info) {
-            selfbody = null;
-            try {
-              if (!info || !info.localaddresses || !info.connections) {
-                console.log("Skipping self-peer: insufficient networkinfo");
-                return;
-              } else {
-                // Find a valid public IPv4 address (exclude private ranges)
-                const publicAddr = info.localaddresses.find(addr =>
-                  addr.address &&
-                  /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/.test(addr.address) &&
-                  !addr.address.startsWith("10.") &&
-                  !addr.address.startsWith("192.168.") &&
-                  !addr.address.startsWith("172.")
-                );
+            // determine the self-peer in a dedicated function so that skipping the
+            // self-peer only skips the self-peer. returning from this callback
+            // directly would abandon the rest of the peer sync without ever calling
+            // exit(), which leaves the sync lock behind and hangs the script forever
+            const selfbody = build_self_peer(info);
 
-                if (!publicAddr) {
-                  console.log("Skipping self-peer: no public IP address");
-                  return;
-                } else
-                // Check for inbound connections (means P2P port reachable)
-                if (info.connections_in < 1) {
-                  console.log("Skipping self-peer: no inbound connections");
-                  return;
-                } else {
-
-                  const address = publicAddr.address;
-                  const port = publicAddr.port || settings.port || 9555;
-
-                  selfbody = {
-                    id: -1,
-                    addr: address + ':' + port,
-                    version: info.protocolversion,
-                    subver: info.subversion,
-                    connection_type: 'self',
-                    inbound: false,
-                  };
-                }
-              }
-            } catch(e) {
-              console.log("Self-peer error:", e);
-            }
             if (selfbody != null) {
               if (body == null) {
-                body = selfbody;
+                body = [selfbody];
               } else {
                 body.push(selfbody);
               }
@@ -2005,7 +2070,12 @@ if (lib.is_locked([database]) == false) {
                   address = address.replace('[', '').replace(']', '');
                 }
 
-                isPeerReachable(address).then(is_open => {
+                isPeerReachable(address).catch(err => {
+                  // never let a failed reachability check reject, as that would
+                  // skip the loop callback below and stall the sync forever
+                  console.log('Warning: reachability check failed for %s: %s', address, (err && err.message ? err.message : err));
+                  return false;
+                }).then(is_open => {
 
                   if (!is_open){
                     console.log('Ignoring unreachable peer %s%s [%s/%s]', address, (port == null || port == '' ? '' : ':' + port.toString()), (i + 1).toString(), body.length.toString());
