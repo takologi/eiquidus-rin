@@ -32,62 +32,70 @@
 $theme-name: string.to-lower-case(theme-selector.$theme-name);
 
 @mixin table-border-color($important: 0) {
+  // resolved once here instead of with the legacy if() function on every line below
+  // (if() is deprecated since Dart Sass 1.95 and will be removed in Dart Sass 2.0)
+  $important-flag: null;
+
+  @if $important != 0 {
+    $important-flag: !important;
+  }
+
   @if $theme-name == "cerulean" {
-    border-color: cerulean.$gray-300 if($important == 0, null, !important);
+    border-color: cerulean.$gray-300 $important-flag;
   } @else if $theme-name == "cosmo" {
-    border-color: cosmo.$gray-300 if($important == 0, null, !important);
+    border-color: cosmo.$gray-300 $important-flag;
   } @else if $theme-name == "cyborg" {
-    border-color: cyborg.$gray-700 if($important == 0, null, !important);
+    border-color: cyborg.$gray-700 $important-flag;
   } @else if $theme-name == "darkly" {
-    border-color: darkly.$gray-700 if($important == 0, null, !important);
+    border-color: darkly.$gray-700 $important-flag;
   } @else if $theme-name == "exor" {
-    border-color: exor.$gray-700 if($important == 0, null, !important);
+    border-color: exor.$gray-700 $important-flag;
   } @else if $theme-name == "flatly" {
-    border-color: flatly.$gray-200 if($important == 0, null, !important);
+    border-color: flatly.$gray-200 $important-flag;
   } @else if $theme-name == "journal" {
-    border-color: journal.$gray-300 if($important == 0, null, !important);
+    border-color: journal.$gray-300 $important-flag;
   } @else if $theme-name == "litera" {
-    border-color: litera.$gray-300 if($important == 0, null, !important);
+    border-color: litera.$gray-300 $important-flag;
   } @else if $theme-name == "lumen" {
-    border-color: lumen.$gray-200 if($important == 0, null, !important);
+    border-color: lumen.$gray-200 $important-flag;
   } @else if $theme-name == "lux" {
-    border-color: lux.$gray-300 if($important == 0, null, !important);
+    border-color: lux.$gray-300 $important-flag;
   } @else if $theme-name == "materia" {
-    border-color: materia.$nav-tabs-border-color if($important == 0, null, !important);
+    border-color: materia.$nav-tabs-border-color $important-flag;
   } @else if $theme-name == "minty" {
-    border-color: minty.$gray-300 if($important == 0, null, !important);
+    border-color: minty.$gray-300 $important-flag;
   } @else if $theme-name == "morph" {
-    border-color: morph.$gray-300 if($important == 0, null, !important);
+    border-color: morph.$gray-300 $important-flag;
   } @else if $theme-name == "pulse" {
-    border-color: pulse.$gray-300 if($important == 0, null, !important);
+    border-color: pulse.$gray-300 $important-flag;
   } @else if $theme-name == "quartz" {
-    border-color: quartz.$gray-300 if($important == 0, null, !important);
+    border-color: quartz.$gray-300 $important-flag;
   } @else if $theme-name == "rincoin" {
     border-color: #444444;
   } @else if $theme-name == "sandstone" {
-    border-color: sandstone.$gray-300 if($important == 0, null, !important);
+    border-color: sandstone.$gray-300 $important-flag;
   } @else if $theme-name == "simplex" {
-    border-color: #eeeeee if($important == 0, null, !important);  /* Hardcoded value not present in _variables.scss */
+    border-color: #eeeeee $important-flag;  /* Hardcoded value not present in _variables.scss */
   } @else if $theme-name == "sketchy" {
-    border-color: sketchy.$gray-800 if($important == 0, null, !important);
+    border-color: sketchy.$gray-800 $important-flag;
   } @else if $theme-name == "slate" {
-    border-color: rgba(0, 0, 0, 0.6) if($important == 0, null, !important);  /* Hardcoded value not present in _variables.scss */
+    border-color: rgba(0, 0, 0, 0.6) $important-flag;  /* Hardcoded value not present in _variables.scss */
   } @else if $theme-name == "solar" {
-    border-color: solar.$gray-800 if($important == 0, null, !important);
+    border-color: solar.$gray-800 $important-flag;
   } @else if $theme-name == "spacelab" {
-    border-color: spacelab.$gray-300 if($important == 0, null, !important);
+    border-color: spacelab.$gray-300 $important-flag;
   } @else if $theme-name == "superhero" {
-    border-color: superhero.$gray-200 if($important == 0, null, !important);
+    border-color: superhero.$gray-200 $important-flag;
   } @else if $theme-name == "united" {
-    border-color: united.$gray-300 if($important == 0, null, !important);
+    border-color: united.$gray-300 $important-flag;
   } @else if $theme-name == "vapor" {
-    border-color: vapor.$gray-300 if($important == 0, null, !important);
+    border-color: vapor.$gray-300 $important-flag;
   } @else if $theme-name == "yeti" {
-    border-color: rgba(0, 0, 0, 0.1) if($important == 0, null, !important);  /* Hardcoded value not present in _variables.scss */
+    border-color: rgba(0, 0, 0, 0.1) $important-flag;  /* Hardcoded value not present in _variables.scss */
   } @else if $theme-name == "zephyr" {
-    border-color: zephyr.$gray-300 if($important == 0, null, !important);    
+    border-color: zephyr.$gray-300 $important-flag;    
   } @else {
-    border-color: #000000 if($important == 0, null, !important);
+    border-color: #000000 $important-flag;
   }
 }
 
