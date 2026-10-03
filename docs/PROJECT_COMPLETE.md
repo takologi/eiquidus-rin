@@ -104,7 +104,7 @@ I have successfully implemented the Rincoin Dashboard for the eIquidus blockchai
 
 ```bash
 # 1. Initialize dashboard data (required for Phase 2 features)
-cd /opt/elquidus
+cd /opt/eiquidus
 node scripts/init_dashboard.js
 
 # 2. Start the server
@@ -259,7 +259,7 @@ dashboardSync.onReorg(reorgHeight, (success) => {
 
 ```bash
 # Check git status
-cd /opt/elquidus
+cd /opt/eiquidus
 git log --oneline -1
 # Should show: "Add Rincoin Dashboard - Phases 1 & 2 complete..."
 

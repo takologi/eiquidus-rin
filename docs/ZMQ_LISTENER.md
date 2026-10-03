@@ -227,22 +227,22 @@ Keep cron jobs as a fallback at reduced frequency. Examples are in `scripts/cron
 
 ```cron
 # Block sync fallback – every 15 min (ZMQ handles the rest)
-*/15 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js update >> /var/log/elquidus/sync_update.log 2>&1
+*/15 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js update >> /var/log/eiquidus/sync_update.log 2>&1
 
 # Dashboard update fallback – every 10 min
-*/10 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/update_dashboard.js >> /var/log/elquidus/dashboard_update.log 2>&1
+*/10 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/update_dashboard.js >> /var/log/eiquidus/dashboard_update.log 2>&1
 
 # Market sync – every 2 min (unchanged)
-*/2 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js market >> /var/log/elquidus/sync_market.log 2>&1
+*/2 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js market >> /var/log/eiquidus/sync_market.log 2>&1
 
 # Peer sync – every 5 min (unchanged)
-*/5 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js peers >> /var/log/elquidus/sync_peers.log 2>&1
+*/5 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js peers >> /var/log/eiquidus/sync_peers.log 2>&1
 
 # Masternode sync – every 5 min (unchanged, if enabled)
-*/5 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js masternodes >> /var/log/elquidus/sync_masternodes.log 2>&1
+*/5 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js masternodes >> /var/log/eiquidus/sync_masternodes.log 2>&1
 
 # Checkpoint – every 6 hours (unchanged)
-0 */6 * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js checkpoint 50000 >> /var/log/elquidus/checkpoint_update.log 2>&1
+0 */6 * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js checkpoint 50000 >> /var/log/eiquidus/checkpoint_update.log 2>&1
 ```
 
 The existing `tmp/*.pid` lock files prevent any overlap between ZMQ-triggered and cron-triggered sync runs.

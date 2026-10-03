@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Rincoin Dashboard is a comprehensive blockchain monitoring system built on top of eIquidus (note: folder name is "elquidus"). It provides real-time and historical blockchain statistics similar to Clark Moody Dashboard, but focused on blockchain data only (no market data).
+The Rincoin Dashboard is a comprehensive blockchain monitoring system built on top of eIquidus. It provides real-time and historical blockchain statistics similar to Clark Moody Dashboard, but focused on blockchain data only (no market data).
 
 ## Architecture
 
@@ -359,7 +359,7 @@ node scripts/init_dashboard.js
 ## File Structure
 
 ```
-/opt/elquidus/
+/opt/eiquidus/
 ├── lib/
 │   ├── dashboard_aggregation.js  # Core aggregation logic
 │   ├── dashboard_sync.js         # Block sync integration

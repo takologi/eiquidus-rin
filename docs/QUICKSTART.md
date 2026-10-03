@@ -26,7 +26,7 @@
 The dashboard uses the existing eIquidus dependencies. If you haven't already:
 
 ```bash
-cd /opt/elquidus
+cd /opt/eiquidus
 npm install
 ```
 
@@ -111,7 +111,7 @@ dashboardSync.onReorg(reorgHeight, function(success) {
 ## File Structure
 
 ```
-/opt/elquidus/
+/opt/eiquidus/
 ├── lib/
 │   ├── dashboard_aggregation.js  # Aggregation logic
 │   ├── dashboard_sync.js         # Block sync hooks

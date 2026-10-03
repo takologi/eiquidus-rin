@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # eIquidus graceful reload wrapper
-# Usage: systemctl reload elquidus.service
+# Usage: systemctl reload eiquidus.service
 
 # Find the cluster master PID
 CLUSTER_PID=$(pgrep -f "node --stack-size.*bin/cluster" | head -1)

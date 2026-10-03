@@ -15,43 +15,43 @@
 # ----------------------------------------------------------------------
 # RECOMMENDED: Run every minute (ideal for Rincoin with 60s block time)
 # ----------------------------------------------------------------------
-* * * * * cd /opt/elquidus && /usr/bin/node scripts/update_dashboard.js >> /var/log/elquidus/dashboard_update.log 2>&1
+* * * * * cd /opt/eiquidus && /usr/bin/node scripts/update_dashboard.js >> /var/log/eiquidus/dashboard_update.log 2>&1
 
 
 # ----------------------------------------------------------------------
 # Run every 5 minutes (for slower coins with 5+ minute block times)
 # ----------------------------------------------------------------------
-# */5 * * * * cd /opt/elquidus && /usr/bin/node scripts/update_dashboard.js >> /var/log/elquidus/dashboard_update.log 2>&1
+# */5 * * * * cd /opt/eiquidus && /usr/bin/node scripts/update_dashboard.js >> /var/log/eiquidus/dashboard_update.log 2>&1
 
 
 # ----------------------------------------------------------------------
 # Run every 10 minutes (for coins with 10+ minute block times like Bitcoin)
 # ----------------------------------------------------------------------
-# */10 * * * * cd /opt/elquidus && /usr/bin/node scripts/update_dashboard.js >> /var/log/elquidus/dashboard_update.log 2>&1
+# */10 * * * * cd /opt/eiquidus && /usr/bin/node scripts/update_dashboard.js >> /var/log/eiquidus/dashboard_update.log 2>&1
 
 
 # ----------------------------------------------------------------------
 # Run every hour (minimal updates, for testing or low-priority coins)
 # ----------------------------------------------------------------------
-# 0 * * * * cd /opt/elquidus && /usr/bin/node scripts/update_dashboard.js >> /var/log/elquidus/dashboard_update.log 2>&1
+# 0 * * * * cd /opt/eiquidus && /usr/bin/node scripts/update_dashboard.js >> /var/log/eiquidus/dashboard_update.log 2>&1
 
 
 # NOTE: Create the log directory first:
-# sudo mkdir -p /var/log/elquidus
-# sudo chown $USER:$USER /var/log/elquidus
+# sudo mkdir -p /var/log/eiquidus
+# sudo chown $USER:$USER /var/log/eiquidus
 
 # To view logs:
-# tail -f /var/log/elquidus/dashboard_update.log
+# tail -f /var/log/eiquidus/dashboard_update.log
 
 
 # ----------------------------------------------------------------------
 # History Checkpoint Refresh (tx-based historical snapshots)
 # ----------------------------------------------------------------------
 # RECOMMENDED: Run every 6 hours with 50,000 tx checkpoint interval
-# 0 */6 * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js checkpoint 50000 >> /var/log/elquidus/checkpoint_update.log 2>&1
+# 0 */6 * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js checkpoint 50000 >> /var/log/eiquidus/checkpoint_update.log 2>&1
 
 # Faster refresh (every hour)
-# 0 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js checkpoint 50000 >> /var/log/elquidus/checkpoint_update.log 2>&1
+# 0 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js checkpoint 50000 >> /var/log/eiquidus/checkpoint_update.log 2>&1
 
 
 # ======================================================================
@@ -76,34 +76,43 @@
 # at the same time against the same MongoDB instance.
 
 # Fallback: block sync every 15 minutes (ZMQ listener handles the rest)
-# */15 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js update >> /var/log/elquidus/sync_update.log 2>&1
+# */15 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js update >> /var/log/eiquidus/sync_update.log 2>&1
 
 # Fallback: dashboard update every 10 minutes
-# */10 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/update_dashboard.js >> /var/log/elquidus/dashboard_update.log 2>&1
+# */10 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/update_dashboard.js >> /var/log/eiquidus/dashboard_update.log 2>&1
 
 # Market price sync every 2 minutes (cron only – external APIs, no ZMQ equivalent)
-# */2 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js market >> /var/log/elquidus/sync_market.log 2>&1
+# */2 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js market >> /var/log/eiquidus/sync_market.log 2>&1
 
 # Market history snapshot (5m bucket by default, cadence controlled by cron)
 # Example: run every 5 minutes
-# */5 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js market-history >> /var/log/elquidus/sync_market_history.log 2>&1
+# */5 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js market-history >> /var/log/eiquidus/sync_market_history.log 2>&1
 
 # Peer geolocation sync every 5 minutes
-# */5 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js peers >> /var/log/elquidus/sync_peers.log 2>&1
+# */5 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js peers >> /var/log/eiquidus/sync_peers.log 2>&1
 
+# NOTE: when running several explorer instances on one host (e.g. production + test), give each its own
+#       log file names and offset the crawler / market-history minutes between them
 # Network crawler (light: verify stale/new candidates, discover further nodes via p2p addr gossip) every 30 minutes
 # NOTE: separate from the "peers" job above - this independently crawls the wider p2p network rather than just the wallet's own connections
-# NOTE: like the dashboard example near the top of this file, /var/log/elquidus must exist and be writable by the cron user first
-#       (sudo mkdir -p /var/log/elquidus && sudo chown $USER:$USER /var/log/elquidus) - otherwise the shell redirect fails silently
+# NOTE: like the dashboard example near the top of this file, /var/log/eiquidus must exist and be writable by the cron user first
+#       (sudo mkdir -p /var/log/eiquidus && sudo chown $USER:$USER /var/log/eiquidus) - otherwise the shell redirect fails silently
 #       and the job never actually runs, even though cron reports no error
-# */30 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js network-crawl >> /var/log/elquidus/sync_network_crawl.log 2>&1
+# */30 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js network-crawl >> /var/log/eiquidus/sync_network_crawl.log 2>&1
 
 # Network crawler deep rescan (re-verify + re-geolocate every known node, not just new/stale ones) monthly
-# 0 3 1 * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js network-crawl-full >> /var/log/elquidus/sync_network_crawl_full.log 2>&1
+# 0 3 1 * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js network-crawl-full >> /var/log/eiquidus/sync_network_crawl_full.log 2>&1
+
+# Network crawler live-peer seed + Full-view recheck every 5 minutes (cheap: records handshake data for
+# the wallet's current p2p connections, then re-handshakes - version/verack only, no address crawling -
+# the handful of nodes with a successful handshake within network_crawler.aging.reachable_ttl_hours)
+# NOTE: its cadence also sets how fast a dead node leaves the Full view: after
+#       network_crawler.aging.unreachable_after_failures consecutive failed rechecks (2 => ~5-10 min)
+# */5 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js network-crawl-seed >> /var/log/eiquidus/sync_network_crawl_seed.log 2>&1
 
 # Masternode list refresh every 5 minutes (if masternodes_page.enabled = true)
-# */5 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js masternodes >> /var/log/elquidus/sync_masternodes.log 2>&1
+# */5 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js masternodes >> /var/log/eiquidus/sync_masternodes.log 2>&1
 
 # History checkpoint every 6 hours (unchanged – long-running batch job)
-# 0 */6 * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js checkpoint 50000 >> /var/log/elquidus/checkpoint_update.log 2>&1
+# 0 */6 * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js checkpoint 50000 >> /var/log/eiquidus/checkpoint_update.log 2>&1
 

@@ -6,7 +6,7 @@ This document summarizes all changes made to the eIquidus project to implement t
 
 ## Project Structure
 
-**Note:** The project folder is named "elquidus" but refers to the eIquidus project (note the capital 'I' in eIquidus).
+**Note:** eIquidus is spelled with a capital 'I' (the project folder, service user and log directory are all named `eiquidus`).
 
 ## Changes Made
 
