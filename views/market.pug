@@ -1,6 +1,130 @@
 extends layout
 
 block content
+  style.
+    #buy-orders_wrapper .dataTables_scrollBody,
+    #sell-orders_wrapper .dataTables_scrollBody {
+      overflow-y: scroll !important;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(13,110,253,0.65) rgba(13,110,253,0.12);
+      border-right: 1px solid rgba(13,110,253,0.25);
+    }
+
+    #buy-orders_wrapper .dataTables_scrollBody::-webkit-scrollbar,
+    #sell-orders_wrapper .dataTables_scrollBody::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    #buy-orders_wrapper .dataTables_scrollBody::-webkit-scrollbar-track,
+    #sell-orders_wrapper .dataTables_scrollBody::-webkit-scrollbar-track {
+      background: rgba(13,110,253,0.12);
+      border-radius: 999px;
+    }
+
+    #buy-orders_wrapper .dataTables_scrollBody::-webkit-scrollbar-thumb,
+    #sell-orders_wrapper .dataTables_scrollBody::-webkit-scrollbar-thumb {
+      background: rgba(13,110,253,0.65);
+      border-radius: 999px;
+      border: 2px solid rgba(13,110,253,0.12);
+    }
+
+    #buy-orders_wrapper .dataTables_scrollBody::-webkit-scrollbar-thumb:hover,
+    #sell-orders_wrapper .dataTables_scrollBody::-webkit-scrollbar-thumb:hover {
+      background: rgba(13,110,253,0.85);
+    }
+
+    /* right-align numeric/float cells across markets page */
+    #buy-orders tbody td,
+    #sell-orders tbody td,
+    #history-table tbody td:nth-child(1),
+    #history-table tbody td:nth-child(2),
+    #history-table tbody td:nth-child(3),{
+      text-align: right !important;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #depth-hover-value,
+    #price-hover-value {
+      min-height: 1.2rem;
+      font-size: 0.82rem;
+      line-height: 1.2rem;
+      color: var(--bs-secondary-color, #6c757d);
+      margin-bottom: 0.25rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #depth-hover-value {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    #depth-hover-value .depth-hover-side {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #depth-hover-value .depth-hover-buy {
+      color: rgba(80, 160, 115, 0.95);
+      text-align: left;
+      flex: 1 1 50%;
+    }
+
+    #depth-hover-value .depth-hover-sell {
+      color: rgba(215, 85, 65, 0.95);
+      text-align: right;
+      flex: 1 1 50%;
+    }
+
+    #price-hover-value {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    #price-hover-value .price-hover-part {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #price-hover-value .price-hover-bid {
+      color: rgba(80, 160, 115, 0.95);
+      text-align: left;
+      flex: 1 1 30%;
+    }
+
+    #price-hover-value .price-hover-last {
+      color: rgba(255, 255, 255, 0.95);
+      text-align: center;
+      flex: 1 1 40%;
+    }
+
+    #price-hover-value .price-hover-ask {
+      color: rgba(215, 85, 65, 0.95);
+      text-align: right;
+      flex: 1 1 30%;
+    }
+
+    #market-root.market-depth-mode-quote .cumulative-coin-col {
+      display: none !important;
+    }
+
+    #market-root.market-depth-mode-base .cumulative-coin-col {
+      display: table-cell !important;
+    }
+
+    #market-root.market-depth-mode-base .cumulative-quote-col {
+      display: none !important;
+    }
+
   script.
     $(document).ready(function() {
       if ('#{settings.markets_page.page_header.show_last_updated}' == 'true') {
@@ -44,8 +168,8 @@ block content
           paging: false,
           searching: false,
           ordering: false,
-          scrollY: '250px',
-          scrollCollapse: true,
+          scrollY: '300px',
+          scrollCollapse: false,
           autowidth: true,
           responsive: true,
           scrollX: true,
@@ -56,6 +180,8 @@ block content
         $('#history-table').dataTable({
           searching: false,
           ordering: false,
+          pageLength: 10,
+          lengthMenu: [[10, 50, 100, 250, 500], [10, 50, 100, 250, 500]],
           responsive: true,
           scrollX: true,
           language: {
@@ -83,7 +209,7 @@ block content
           }
         });
       });
-  .col-xs-12.col-md-12
+  #market-root.col-xs-12.col-md-12.market-depth-mode-quote
     if settings.markets_page.page_header.show_img == true || settings.markets_page.page_header.show_title == true || settings.markets_page.page_header.show_last_updated == true || (settings.markets_page.page_header.show_exchange_url == true && marketdata.url != null && marketdata.url != '') || settings.markets_page.page_header.show_description == true
       #page-header-container(style='align-items:' + (settings.markets_page.page_header.show_img == true && settings.markets_page.page_header.show_title == true && ((settings.markets_page.page_header.show_last_updated == true && settings.markets_page.page_header.show_description == true) || ((settings.markets_page.page_header.show_exchange_url == true && marketdata.url != null && marketdata.url != '') && settings.markets_page.page_header.show_description == true) || ((settings.markets_page.page_header.show_exchange_url == true && marketdata.url != null && marketdata.url != '') && settings.markets_page.page_header.show_last_updated == true)) ? 'flex-start' : 'center'))
         if settings.markets_page.page_header.show_img == true
@@ -171,6 +297,8 @@ block content
       block market_view
         script.
           $(document).ready(function() {
+            var depthData = !{JSON.stringify((marketdata.depth_chart == null ? { bids: [], asks: [] } : marketdata.depth_chart))};
+            var priceHistoryApiUrl = '#{marketdata.price_history_api_url == null ? '' : marketdata.price_history_api_url}';
             var chartData = !{(marketdata.data.chartdata == null || marketdata.data.chartdata == 'null' || marketdata.data.chartdata == '' || marketdata.data.chartdata == '[]' ? 'null' : marketdata.data.chartdata)};
 
             if (chartData != null) {
@@ -280,6 +408,795 @@ block content
                 }
               });
             }
+
+            if (depthData != null && ((depthData.bids != null && depthData.bids.length > 0) || (depthData.asks != null && depthData.asks.length > 0))) {
+              var depthChartInstance = null;
+              var depthBaseSymbol = (depthData.base_symbol || '#{marketdata.coin}');
+              var depthQuoteSymbol = (depthData.quote_symbol || '#{marketdata.exchange}');
+              var depthSpanOptions = (Array.isArray(depthData.span_options_pct) && depthData.span_options_pct.length > 0 ? depthData.span_options_pct : [1, 2.5, 5, 10, 25, 50]);
+              var selectedDepthPct = Number(depthData.default_span_pct || 25);
+              var selectedDepthMode = 'quote';
+              var depthSamplesPerSide = 100;
+              var depthComputedState = null;
+
+              if (Array.isArray(depthSpanOptions) && depthSpanOptions.length > 0) {
+                var hasDefault = depthSpanOptions.some(function(x) { return Number(x) === Number(selectedDepthPct); });
+
+                if (!hasDefault)
+                  selectedDepthPct = Number(depthSpanOptions[0]);
+              }
+
+              function formatDepthNumber(v) {
+                return Number(v || 0).toLocaleString('en', {'minimumFractionDigits': 2, 'maximumFractionDigits': 8, 'useGrouping': true});
+              }
+
+              function formatDepthPrice(v) {
+                return Number(v || 0).toLocaleString('en', {'minimumFractionDigits': 2, 'maximumFractionDigits': 8, 'useGrouping': true});
+              }
+
+              function formatDepthAxisTick(v) {
+                var n = Number(v || 0);
+
+                if (!(n > 0))
+                  return '0';
+
+                if (n >= 1)
+                  return n.toFixed(4).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+
+                if (n >= 0.01)
+                  return n.toFixed(6).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+
+                if (n >= 0.0001)
+                  return n.toFixed(8).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+
+                return n.toExponential(2);
+              }
+
+              function resolveDepthCenterPrice() {
+                var cp = Number(depthData.center_price || 0);
+
+                if (cp > 0)
+                  return cp;
+
+                var bestBid = 0;
+                var bestAsk = 0;
+
+                if (Array.isArray(depthData.bids)) {
+                  depthData.bids.forEach(function(row) {
+                    var p = Number(row.price || 0);
+                    if (p > bestBid)
+                      bestBid = p;
+                  });
+                }
+
+                if (Array.isArray(depthData.asks)) {
+                  depthData.asks.forEach(function(row) {
+                    var p = Number(row.price || 0);
+                    if (p > 0 && (bestAsk === 0 || p < bestAsk))
+                      bestAsk = p;
+                  });
+                }
+
+                if (bestBid > 0 && bestAsk > 0)
+                  return (bestBid + bestAsk) / 2;
+
+                return (bestBid > 0 ? bestBid : bestAsk);
+              }
+
+              function aggregateByPrice(rows, mode) {
+                var byPrice = new Map();
+
+                (Array.isArray(rows) ? rows : []).forEach(function(row) {
+                  var price = Number(row.price || 0);
+                  var quantity = Number(row.quantity || 0);
+                  var totalQuote = Number(row.total_quote || (price * quantity) || 0);
+
+                  if (!(price > 0) || !(quantity > 0))
+                    return;
+
+                  var value = (mode === 'base' ? quantity : totalQuote);
+                  byPrice.set(price, (byPrice.get(price) || 0) + value);
+                });
+
+                return Array.from(byPrice.entries()).map(function(entry) {
+                  return { price: Number(entry[0]), value: Number(entry[1]) };
+                });
+              }
+
+              function buildCumulativeTables(mode) {
+                var bids = aggregateByPrice(depthData.bids || [], mode).sort(function(a, b) { return b.price - a.price; });
+                var asks = aggregateByPrice(depthData.asks || [], mode).sort(function(a, b) { return a.price - b.price; });
+
+                var bidCum = [];
+                var askCum = [];
+                var running = 0;
+
+                bids.forEach(function(level) {
+                  running += level.value;
+                  bidCum.push({ price: level.price, cumulative: running });
+                });
+
+                running = 0;
+                asks.forEach(function(level) {
+                  running += level.value;
+                  askCum.push({ price: level.price, cumulative: running });
+                });
+
+                return {
+                  bids: bidCum,
+                  asks: askCum
+                };
+              }
+
+              function cumulativeAtX(cumulativeRows, x, side) {
+                if (!Array.isArray(cumulativeRows) || cumulativeRows.length === 0 || !(x > 0))
+                  return 0;
+
+                if (side === 'buy') {
+                  if (x > cumulativeRows[0].price)
+                    return 0;
+
+                  for (var i = 0; i < cumulativeRows.length; i++) {
+                    if (cumulativeRows[i].price < x)
+                      return (i > 0 ? Number(cumulativeRows[i - 1].cumulative || 0) : 0);
+                  }
+
+                  return Number(cumulativeRows[cumulativeRows.length - 1].cumulative || 0);
+                }
+
+                if (x < cumulativeRows[0].price)
+                  return 0;
+
+                for (var j = 0; j < cumulativeRows.length; j++) {
+                  if (cumulativeRows[j].price > x)
+                    return (j > 0 ? Number(cumulativeRows[j - 1].cumulative || 0) : 0);
+                }
+
+                return Number(cumulativeRows[cumulativeRows.length - 1].cumulative || 0);
+              }
+
+              function buildLogGrid(minX, maxX, points) {
+                var grid = [];
+
+                if (!(minX > 0) || !(maxX > minX) || !(points > 1))
+                  return grid;
+
+                for (var i = 0; i < points; i++) {
+                  var r = i / (points - 1);
+                  grid.push(minX * Math.pow((maxX / minX), r));
+                }
+
+                return grid;
+              }
+
+              function computeDepthDatasets(centerPrice, spanPct, mode) {
+                var p = Number(spanPct || 25) / 100;
+                var xMin = (centerPrice > 0 ? (centerPrice / (1 + p)) : 0);
+                var xMax = (centerPrice > 0 ? (centerPrice * (1 + p)) : 0);
+                var tables = buildCumulativeTables(mode);
+                var bidGrid = buildLogGrid(xMin, centerPrice, depthSamplesPerSide);
+                var askGrid = buildLogGrid(centerPrice, xMax, depthSamplesPerSide);
+
+                var bidData = bidGrid.map(function(x) {
+                  return { x: x, y: cumulativeAtX(tables.bids, x, 'buy') };
+                });
+
+                var askData = askGrid.map(function(x) {
+                  return { x: x, y: cumulativeAtX(tables.asks, x, 'sell') };
+                });
+
+                return {
+                  bids: bidData,
+                  asks: askData,
+                  min: xMin,
+                  max: xMax,
+                  center: centerPrice,
+                  tables: tables
+                };
+              }
+
+              function depthValueAt(x, side) {
+                if (depthComputedState == null || depthComputedState.tables == null)
+                  return 0;
+
+                return cumulativeAtX((side === 'buy' ? depthComputedState.tables.bids : depthComputedState.tables.asks), x, side);
+              }
+
+              function setDepthRangeButtonsActive(pct) {
+                $('.depth-range-btn').removeClass('active');
+                $('.depth-range-btn[data-pct="' + pct + '"]').addClass('active');
+              }
+
+              function setDepthModeButtonsActive(mode) {
+                $('.depth-value-btn').removeClass('active');
+                $('.depth-value-btn[data-mode="' + mode + '"]').addClass('active');
+              }
+
+              function setOrderbookCumulativeColumns(mode) {
+                var root = $('#market-root');
+
+                if (!root.length)
+                  return;
+
+                if (mode === 'base')
+                  root.removeClass('market-depth-mode-quote').addClass('market-depth-mode-base');
+                else
+                  root.removeClass('market-depth-mode-base').addClass('market-depth-mode-quote');
+              }
+
+              function updateDepthHoverLabel(payload) {
+                if (payload == null) {
+                  $('#depth-hover-value').text('Move cursor over depth graph to inspect buy/sell values');
+                  return;
+                }
+
+                $('#depth-hover-value').html(
+                  '<span class="depth-hover-side depth-hover-buy">Buy @ ' + formatDepthPrice(payload.buyX) + ' ' + depthQuoteSymbol + '<b>: ' + formatDepthNumber(payload.buyY) + ' ' + payload.depthUnit + '</b></span>' +
+                  '<span class="depth-hover-side depth-hover-sell">Sell @ ' + formatDepthPrice(payload.sellX) + ' ' + depthQuoteSymbol + '<b>: ' + formatDepthNumber(payload.sellY) + ' ' + payload.depthUnit + '</b></span>'
+                );
+              }
+
+              var depthHoverState = null;
+
+              function setDepthHoverFromElement(chart, element) {
+                if (chart == null || element == null || depthComputedState == null) {
+                  depthHoverState = null;
+                  updateDepthHoverLabel(null);
+                  return;
+                }
+
+                const ds = (((chart.data || {}).datasets || [])[element.datasetIndex] || {});
+                const point = (((ds.data || [])[element.index]) || null);
+
+                if (point == null || !(Number(point.x) > 0)) {
+                  depthHoverState = null;
+                  updateDepthHoverLabel(null);
+                  return;
+                }
+
+                const side = (element.datasetIndex === 0 ? 'buy' : 'sell');
+                const x = Number(point.x);
+                const yVal = Number(point.y || 0);
+                const mirrorX = (depthComputedState.center > 0 ? ((depthComputedState.center * depthComputedState.center) / x) : 0);
+                const mirrorSide = (side === 'buy' ? 'sell' : 'buy');
+                const mirrorY = depthValueAt(mirrorX, mirrorSide);
+                const depthUnit = (selectedDepthMode === 'base' ? depthBaseSymbol : depthQuoteSymbol);
+
+                if (side === 'buy') {
+                  depthHoverState = {
+                    buyX: x,
+                    buyY: yVal,
+                    sellX: mirrorX,
+                    sellY: mirrorY,
+                    depthUnit: depthUnit
+                  };
+                } else {
+                  depthHoverState = {
+                    buyX: mirrorX,
+                    buyY: mirrorY,
+                    sellX: x,
+                    sellY: yVal,
+                    depthUnit: depthUnit
+                  };
+                }
+
+                updateDepthHoverLabel(depthHoverState);
+              }
+
+              var depthHoverGuidePlugin = {
+                id: 'depthHoverGuide',
+                afterDatasetsDraw: function(chart) {
+                  try {
+                    if (depthComputedState == null || depthHoverState == null)
+                      return;
+                    var chartArea = chart.chartArea;
+                    var xScale = chart.scales.x;
+                    var yScale = chart.scales.y;
+                    var pxBuy = xScale.getPixelForValue(Number(depthHoverState.buyX || 0));
+                    var pxSell = xScale.getPixelForValue(Number(depthHoverState.sellX || 0));
+                    var pyBuy = yScale.getPixelForValue(Number(depthHoverState.buyY || 0));
+                    var pySell = yScale.getPixelForValue(Number(depthHoverState.sellY || 0));
+
+                    var ctx = chart.ctx;
+                    ctx.save();
+
+                    // vertical guide lines for buy/sell x positions
+                    ctx.setLineDash([]);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+                    ctx.lineWidth = 0.8;
+
+                    if (isFinite(pxBuy)) {
+                      ctx.beginPath();
+                      ctx.moveTo(pxBuy, chartArea.top);
+                      ctx.lineTo(pxBuy, chartArea.bottom);
+                      ctx.stroke();
+                    }
+
+                    if (isFinite(pxSell)) {
+                      ctx.beginPath();
+                      ctx.moveTo(pxSell, chartArea.top);
+                      ctx.lineTo(pxSell, chartArea.bottom);
+                      ctx.stroke();
+                    }
+
+                    // horizontal guide lines for both sides (same dashed style)
+                    ctx.setLineDash([4, 3]);
+                    ctx.strokeStyle = 'rgba(80,160,115,0.5)';
+                    ctx.lineWidth = 0.8;
+                    ctx.beginPath();
+                    ctx.moveTo(chartArea.left, pyBuy);
+                    ctx.lineTo(chartArea.right, pyBuy);
+                    ctx.stroke();
+
+                    ctx.strokeStyle = 'rgba(215,85,65,0.45)';
+                    ctx.beginPath();
+                    ctx.moveTo(chartArea.left, pySell);
+                    ctx.lineTo(chartArea.right, pySell);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    ctx.restore();
+                  } catch (e) {
+                    // swallow to keep hover listener healthy
+                  }
+                }
+              };
+
+              function renderDepthChart() {
+                var centerPrice = resolveDepthCenterPrice();
+
+                if (!(centerPrice > 0))
+                  return;
+
+                depthComputedState = computeDepthDatasets(centerPrice, selectedDepthPct, selectedDepthMode);
+                var depthUnit = (selectedDepthMode === 'base' ? depthBaseSymbol : depthQuoteSymbol);
+
+                if (depthChartInstance == null) {
+                  depthChartInstance = new Chart('depth-chart', {
+                    type: 'line',
+                    data: {
+                      datasets: [{
+                        label: 'Buy depth (' + depthUnit + ')',
+                        data: depthComputedState.bids,
+                        borderColor: 'rgba(80, 160, 115, 1)',
+                        backgroundColor: 'rgba(80, 160, 115, 0.10)',
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        tension: 0,
+                        borderWidth: 1.5,
+                        fill: true
+                      }, {
+                        label: 'Sell depth (' + depthUnit + ')',
+                        data: depthComputedState.asks,
+                        borderColor: 'rgba(215, 85, 65, 1)',
+                        backgroundColor: 'rgba(215, 85, 65, 0.10)',
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        tension: 0,
+                        borderWidth: 1.5,
+                        fill: true
+                      }]
+                    },
+                    options: {
+                      maintainAspectRatio: false,
+                      events: ['mousemove', 'mouseout', 'touchstart', 'touchmove'],
+                      onHover: function(evt, activeEls, chart) {
+                        try {
+                          const active = (Array.isArray(activeEls) ? activeEls : []);
+
+                          if (active.length > 0)
+                            setDepthHoverFromElement(chart, active[0]);
+                          else {
+                            const fallback = chart.getElementsAtEventForMode(evt, 'nearest', { intersect: false, axis: 'x' }, false);
+
+                            if (Array.isArray(fallback) && fallback.length > 0)
+                              setDepthHoverFromElement(chart, fallback[0]);
+                            else {
+                              depthHoverState = null;
+                              updateDepthHoverLabel(null);
+                            }
+                          }
+
+                          chart.draw();
+                        } catch (e) {
+                          depthHoverState = null;
+                          updateDepthHoverLabel(null);
+                        }
+                      },
+                      interaction: {
+                        mode: 'nearest',
+                        intersect: false,
+                        axis: 'x'
+                      },
+                      scales: {
+                        x: {
+                          type: 'logarithmic',
+                          min: depthComputedState.min,
+                          max: depthComputedState.max,
+                          afterBuildTicks: function(scale) {
+                            if (!(depthComputedState.min > 0) || !(depthComputedState.max > depthComputedState.min))
+                              return;
+
+                            const custom = [];
+                            const parts = 7;
+
+                            for (let i = 0; i <= parts; i++) {
+                              const ratio = i / parts;
+                              const val = depthComputedState.min * Math.pow((depthComputedState.max / depthComputedState.min), ratio);
+                              custom.push({ value: val });
+                            }
+
+                            scale.ticks = custom;
+                          },
+                          ticks: {
+                            callback: function(value) {
+                              return formatDepthAxisTick(value);
+                            }
+                          },
+                          title: {
+                            display: true,
+                            text: 'Price (' + depthQuoteSymbol + ')'
+                          }
+                        },
+                        y: {
+                          min: 0,
+                          title: {
+                            display: true,
+                            text: 'Cumulative total (' + depthUnit + ')'
+                          }
+                        }
+                      },
+                      plugins: {
+                        tooltip: {
+                          enabled: false
+                        }
+                      }
+                    },
+                    plugins: [depthHoverGuidePlugin]
+                  });
+                } else {
+                  depthChartInstance.data.datasets[0].label = 'Buy depth (' + depthUnit + ')';
+                  depthChartInstance.data.datasets[1].label = 'Sell depth (' + depthUnit + ')';
+                  depthChartInstance.data.datasets[0].data = depthComputedState.bids;
+                  depthChartInstance.data.datasets[1].data = depthComputedState.asks;
+                  depthChartInstance.options.scales.x.min = depthComputedState.min;
+                  depthChartInstance.options.scales.x.max = depthComputedState.max;
+                  depthChartInstance.options.scales.y.min = 0;
+                  depthChartInstance.options.scales.y.title.text = 'Cumulative total (' + depthUnit + ')';
+                  depthHoverState = null;
+                  updateDepthHoverLabel(null);
+                  depthChartInstance.update();
+                }
+              }
+
+              setDepthRangeButtonsActive(selectedDepthPct);
+              setDepthModeButtonsActive(selectedDepthMode);
+              setOrderbookCumulativeColumns(selectedDepthMode);
+              renderDepthChart();
+
+              $('.depth-range-btn').off('click').on('click', function() {
+                var pct = Number($(this).attr('data-pct'));
+
+                if (!(pct > 0))
+                  return;
+
+                selectedDepthPct = pct;
+                setDepthRangeButtonsActive(selectedDepthPct);
+                renderDepthChart();
+              });
+
+              $('.depth-value-btn').off('click').on('click', function() {
+                var mode = ($(this).attr('data-mode') || 'quote').toLowerCase();
+
+                if (mode !== 'quote' && mode !== 'base')
+                  return;
+
+                selectedDepthMode = mode;
+                setDepthModeButtonsActive(selectedDepthMode);
+                setOrderbookCumulativeColumns(selectedDepthMode);
+                renderDepthChart();
+              });
+            }
+
+            if (priceHistoryApiUrl != null && priceHistoryApiUrl !== '' && $('#price-history-30d').length > 0) {
+              var priceHistoryChart = null;
+              var priceHoverState = null;
+              var activePriceHistoryRequest = null;
+
+              function formatPriceNumber(v) {
+                return Number(v || 0).toLocaleString('en', {'minimumFractionDigits': 2, 'maximumFractionDigits': 8, 'useGrouping': true});
+              }
+
+              function normalizeRows(rows) {
+                var out = [];
+
+                (Array.isArray(rows) ? rows : []).forEach(function(r) {
+                  var x = Number(r.x);
+                  var last = (r.last != null ? Number(r.last) : null);
+                  var bid = (r.bid != null ? Number(r.bid) : null);
+                  var ask = (r.ask != null ? Number(r.ask) : null);
+
+                  if (!(x > 0) || isNaN(x))
+                    return;
+
+                  if (last != null && !(last > 0))
+                    last = null;
+
+                  if (bid != null && !(bid > 0))
+                    bid = null;
+
+                  if (ask != null && !(ask > 0))
+                    ask = null;
+
+                  if (bid != null && ask != null && ask < bid)
+                    ask = bid;
+
+                  out.push({ x: x, last: last, bid: bid, ask: ask });
+                });
+
+                return out.sort(function(a, b) { return a.x - b.x; });
+              }
+
+              function updatePriceHoverLabel(payload) {
+                if (payload == null) {
+                  $('#price-hover-value').text('Move cursor over price graph to inspect values');
+                  return;
+                }
+
+                $('#price-hover-value').html(
+                  '<span class="price-hover-part price-hover-bid">Bid (highest): <b>' + formatPriceNumber(payload.bid || 0) + ' #{marketdata.exchange}</b></span>' +
+                  '<span class="price-hover-part price-hover-last">Last @ ' + format_unixtime(payload.x) + ': <b>' + formatPriceNumber(payload.last || 0) + ' #{marketdata.exchange}</b></span>' +
+                  '<span class="price-hover-part price-hover-ask">Ask (lowest): <b>' + formatPriceNumber(payload.ask || 0) + ' #{marketdata.exchange}</b></span>'
+                );
+              }
+
+              function buildDatasets(rows) {
+                return [{
+                  label: 'Bid (highest)',
+                  data: rows.filter(function(r) { return r.bid != null; }).map(function(r) { return { x: r.x, y: r.bid }; }),
+                  borderColor: 'rgba(80, 160, 115, 1)',
+                  backgroundColor: 'rgba(80, 160, 115, 0)',
+                  borderWidth: 0.8,
+                  pointRadius: 0,
+                  tension: 0,
+                  fill: false
+                }, {
+                  label: 'Last price',
+                  data: rows.filter(function(r) { return r.last != null; }).map(function(r) { return { x: r.x, y: r.last }; }),
+                  borderColor: 'rgba(90, 140, 210, 1)',
+                  backgroundColor: 'rgba(90, 140, 210, 0)',
+                  borderWidth: 0.8,
+                  pointRadius: 0,
+                  tension: 0,
+                  fill: false
+                }, {
+                  label: 'Ask (lowest)',
+                  data: rows.filter(function(r) { return r.ask != null; }).map(function(r) { return { x: r.x, y: r.ask }; }),
+                  borderColor: 'rgba(215, 85, 65, 1)',
+                  backgroundColor: 'rgba(215, 85, 65, 0)',
+                  borderWidth: 0.8,
+                  pointRadius: 0,
+                  tension: 0,
+                  fill: false
+                }];
+              }
+
+              function setPriceRangeButtonsActive(days) {
+                $('.price-history-range-btn').removeClass('active');
+                $('.price-history-range-btn[data-days="' + days + '"]').addClass('active');
+              }
+
+              var priceHoverGuidePlugin = {
+                id: 'priceHoverGuide',
+                afterEvent: function(chart, args) {
+                  try {
+                    const evt = (args ? args.event : null);
+
+                    if (evt == null || evt.type === 'mouseout') {
+                      priceHoverState = null;
+                      updatePriceHoverLabel(null);
+                      chart.draw();
+                      return;
+                    }
+
+                    const active = chart.getElementsAtEventForMode(evt, 'nearest', { intersect: false, axis: 'x' }, false);
+
+                    if (!Array.isArray(active) || active.length === 0) {
+                      priceHoverState = null;
+                      updatePriceHoverLabel(null);
+                      chart.draw();
+                      return;
+                    }
+
+                    const x = Number((((chart.data.datasets || [])[active[0].datasetIndex] || {}).data || [])[active[0].index].x || 0);
+
+                    if (!(x > 0)) {
+                      priceHoverState = null;
+                      updatePriceHoverLabel(null);
+                      chart.draw();
+                      return;
+                    }
+
+                    var last = null;
+                    var bid = null;
+                    var ask = null;
+
+                    (chart.data.datasets || []).forEach(function(ds) {
+                      var match = (Array.isArray(ds.data) ? ds.data.find(function(p) { return Number(p.x) === x; }) : null);
+
+                      if (match != null) {
+                        if (ds.label.indexOf('Last') > -1)
+                          last = Number(match.y || 0);
+                        else if (ds.label.indexOf('Bid') > -1)
+                          bid = Number(match.y || 0);
+                        else if (ds.label.indexOf('Ask') > -1)
+                          ask = Number(match.y || 0);
+                      }
+                    });
+
+                    if (bid != null && ask != null && ask < bid)
+                      ask = bid;
+
+                    priceHoverState = {
+                      x: x,
+                      y: Number((((chart.data.datasets || [])[active[0].datasetIndex] || {}).data || [])[active[0].index].y || 0),
+                      last: last,
+                      bid: bid,
+                      ask: ask
+                    };
+
+                    updatePriceHoverLabel(priceHoverState);
+                    chart.draw();
+                  } catch (e) {
+                    priceHoverState = null;
+                    updatePriceHoverLabel(null);
+                  }
+                },
+                afterDatasetsDraw: function(chart) {
+                  try {
+                    if (priceHoverState == null)
+                      return;
+
+                    var yScale = chart.scales.y;
+                    var xScale = chart.scales.x;
+                    var chartArea = chart.chartArea;
+                    var ctx = chart.ctx;
+
+                    var px = xScale.getPixelForValue(Number(priceHoverState.x || 0));
+
+                    function drawGuide(yValue, color) {
+                      if (yValue == null || !isFinite(Number(yValue)))
+                        return;
+
+                      var py = yScale.getPixelForValue(Number(yValue));
+                      if (!isFinite(py))
+                        return;
+
+                      ctx.strokeStyle = color;
+                      ctx.lineWidth = 0.8;
+                      ctx.setLineDash([2, 3]);
+                      ctx.beginPath();
+                      ctx.moveTo(chartArea.left, py);
+                      ctx.lineTo(chartArea.right, py);
+                      ctx.stroke();
+                    }
+
+                    ctx.save();
+                    if (isFinite(px)) {
+                      ctx.setLineDash([]);
+                      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+                      ctx.lineWidth = 0.8;
+                      ctx.beginPath();
+                      ctx.moveTo(px, chartArea.top);
+                      ctx.lineTo(px, chartArea.bottom);
+                      ctx.stroke();
+                    }
+                    drawGuide(priceHoverState.last, 'rgba(90, 140, 210, 0.9)');
+                    drawGuide(priceHoverState.bid, 'rgba(80, 160, 115, 0.9)');
+                    drawGuide(priceHoverState.ask, 'rgba(215, 85, 65, 0.9)');
+                    ctx.setLineDash([]);
+                    ctx.restore();
+                  } catch (e) {
+                    // ignore hover draw errors
+                  }
+                }
+              };
+
+              function renderPriceChart(rows) {
+                if (priceHistoryChart == null) {
+                  priceHistoryChart = new Chart('price-history-30d', {
+                    type: 'line',
+                    data: {
+                      datasets: buildDatasets(rows)
+                    },
+                    options: {
+                      maintainAspectRatio: false,
+                      events: ['mousemove', 'mouseout', 'touchstart', 'touchmove'],
+                      interaction: {
+                        mode: 'nearest',
+                        intersect: false,
+                        axis: 'x'
+                      },
+                      scales: {
+                        x: {
+                          type: 'linear',
+                          ticks: {
+                            callback: function(value) {
+                              const dt = new Date(Number(value) * 1000);
+                              return dt.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+                            }
+                          },
+                          title: {
+                            display: true,
+                            text: 'Date (UTC)'
+                          }
+                        },
+                        y: {
+                          title: {
+                            display: true,
+                            text: 'Price (' + '#{marketdata.exchange}' + ')'
+                          }
+                        }
+                      },
+                      plugins: {
+                        tooltip: {
+                          enabled: false
+                        }
+                      }
+                    },
+                    plugins: [priceHoverGuidePlugin]
+                  });
+                } else {
+                  priceHistoryChart.data.datasets = buildDatasets(rows);
+                  priceHistoryChart.update();
+                }
+
+                priceHoverState = null;
+                updatePriceHoverLabel(null);
+              }
+
+              function loadPriceRange(days) {
+                setPriceRangeButtonsActive(days);
+                $('#price-hover-value').text('Loading historical market data...');
+
+                if (activePriceHistoryRequest != null && typeof activePriceHistoryRequest.abort === 'function') {
+                  try {
+                    activePriceHistoryRequest.abort();
+                  } catch (e) {
+                    // ignore abort failures
+                  }
+                }
+
+                activePriceHistoryRequest = $.getJSON(priceHistoryApiUrl, { range: days, max_points: 300 });
+                activePriceHistoryRequest.done(function(response) {
+                  var rows = normalizeRows((response && Array.isArray(response.points) ? response.points : []));
+
+                  if (rows.length === 0) {
+                    if (priceHistoryChart != null) {
+                      priceHistoryChart.data.datasets = buildDatasets([]);
+                      priceHistoryChart.update();
+                    }
+
+                    $('#price-hover-value').text('No historical data found for this range yet.');
+                    return;
+                  }
+
+                  renderPriceChart(rows);
+                  $('#price-hover-value').text('Move cursor over price graph to inspect values');
+                });
+
+                activePriceHistoryRequest.fail(function() {
+                  $('#price-hover-value').text('Unable to load market history right now. Please try again.');
+                });
+              }
+
+              $('.price-history-range-btn').on('click', function() {
+                var days = ($(this).attr('data-days') || '30');
+                loadPriceRange(days);
+              });
+
+              loadPriceRange('30');
+            }
           });
         .row
           .col-md-12.cardSpacer
@@ -297,36 +1214,36 @@ block content
                   tr(class=theadClasses)
                     if marketdata.data.summary != null
                       if marketdata.data.summary.high != null
-                        th.text-center #{settings.localization.mkt_high}
+                        th.text-center.text-nowrap #{settings.localization.mkt_high}
                       if marketdata.data.summary.low != null
-                        th.text-center #{settings.localization.mkt_low}
+                        th.text-center.text-nowrap #{settings.localization.mkt_low}
                       if marketdata.data.summary.volume != null
-                        th.text-center #{settings.localization.mkt_volume}
+                        th.text-center.text-nowrap #{settings.localization.mkt_volume}
                           span.small.fw-normal  (#{marketdata.coin})
                       if marketdata.data.summary.volume_btc != null
-                        th.text-center #{settings.localization.mkt_volume}
+                        th.text-center.text-nowrap #{settings.localization.mkt_volume}
                           span.small.fw-normal  (#{marketdata.exchange})
                       if marketdata.data.summary.bid != null
-                        th.text-center #{settings.localization.mkt_top_bid}
+                        th.text-center.text-nowrap #{settings.localization.mkt_top_bid}
                       if marketdata.data.summary.ask != null
-                        th.text-center #{settings.localization.mkt_top_ask}
+                        th.text-center.text-nowrap #{settings.localization.mkt_top_ask}
                       if marketdata.data.summary.last != null
-                        th.text-center #{settings.localization.mkt_last}
+                        th.text-center.text-nowrap #{settings.localization.mkt_last}
                       if marketdata.data.summary.prev != null
-                        th.text-center #{settings.localization.mkt_yesterday}
+                        th.text-center.text-nowrap #{settings.localization.mkt_yesterday}
                       if marketdata.data.summary.change != null || (marketdata.data.summary.last != null && marketdata.data.summary.prev != null)
-                        th.text-center #{settings.localization.mkt_change}
+                        th.text-center.text-nowrap #{settings.localization.mkt_change}
                     else
-                      th.text-center #{settings.localization.mkt_high}
-                      th.text-center #{settings.localization.mkt_low}
-                      th.text-center #{settings.localization.mkt_volume}
+                      th.text-center.text-nowrap #{settings.localization.mkt_high}
+                      th.text-center.text-nowrap #{settings.localization.mkt_low}
+                      th.text-center.text-nowrap #{settings.localization.mkt_volume}
                         span.small.fw-normal  (#{marketdata.coin})
-                      th.text-center #{settings.localization.mkt_volume}
+                      th.text-center.text-nowrap #{settings.localization.mkt_volume}
                         span.small.fw-normal  (#{marketdata.exchange})
-                      th.text-center #{settings.localization.mkt_top_bid}
-                      th.text-center #{settings.localization.mkt_top_ask}
-                      th.text-center #{settings.localization.mkt_last}
-                      th.text-center #{settings.localization.mkt_yesterday}
+                      th.text-center.text-nowrap #{settings.localization.mkt_top_bid}
+                      th.text-center.text-nowrap #{settings.localization.mkt_top_ask}
+                      th.text-center.text-nowrap #{settings.localization.mkt_last}
+                      th.text-center.text-nowrap #{settings.localization.mkt_yesterday}
                       th.text-center #{settings.localization.mkt_change}
                 tbody
                   tr
@@ -335,49 +1252,49 @@ block content
                         - var highValue = Number(marketdata.data.summary.high).toLocaleString('en',mktFmtOpts);
                         - var splitHigh = highValue.split(".");
                         - var highDecimal = splitHigh[1].replace(/(\d{3})/g, '$1 ').trim();
-                        td.text-center #{splitHigh[0]}.
+                        td.text-center.text-nowrap #{splitHigh[0]}.
                           span.decimal #{highDecimal}
                       if marketdata.data.summary.low != null
                         - var lowValue = Number(marketdata.data.summary.low).toLocaleString('en',mktFmtOpts);
                         - var splitLow = lowValue.split(".");
                         - var lowDecimal = splitLow[1].replace(/(\d{3})/g, '$1 ').trim();
-                        td.text-center #{splitLow[0]}.
+                        td.text-center.text-nowrap #{splitLow[0]}.
                           span.decimal #{lowDecimal}
                       if marketdata.data.summary.volume != null
                         - var volumeValue = Number(marketdata.data.summary.volume).toLocaleString('en',mktFmtOpts);
                         - var splitVolume = volumeValue.split(".");
                         - var volumeDecimal = splitVolume[1].replace(/(\d{3})/g, '$1 ').trim();
-                        td.text-center #{splitVolume[0]}.
+                        td.text-center.text-nowrap #{splitVolume[0]}.
                           span.decimal #{volumeDecimal}
                       if marketdata.data.summary.volume_btc != null
                         - var volumeBTCValue = Number(marketdata.data.summary.volume_btc).toLocaleString('en',mktFmtOpts);
                         - var splitVolumeBTC = volumeBTCValue.split(".");
                         - var volumeBTCDecimal = splitVolumeBTC[1].replace(/(\d{3})/g, '$1 ').trim();
-                        td.text-center #{splitVolumeBTC[0]}.
+                        td.text-center.text-nowrap #{splitVolumeBTC[0]}.
                           span.decimal #{volumeBTCDecimal}
                       if marketdata.data.summary.bid != null
                         - var bidValue = Number(marketdata.data.summary.bid).toLocaleString('en',mktFmtOpts);
                         - var splitBid = bidValue.split(".");
                         - var bidDecimal = splitBid[1].replace(/(\d{3})/g, '$1 ').trim();
-                        td.text-center #{splitBid[0]}.
+                        td.text-center.text-nowrap #{splitBid[0]}.
                           span.decimal #{bidDecimal}
                       if marketdata.data.summary.ask != null
                         - var askValue = Number(marketdata.data.summary.ask).toLocaleString('en',mktFmtOpts);
                         - var splitAsk = askValue.split(".");
                         - var askDecimal = splitAsk[1].replace(/(\d{3})/g, '$1 ').trim();
-                        td.text-center #{splitAsk[0]}.
+                        td.text-center.text-nowrap #{splitAsk[0]}.
                           span.decimal #{askDecimal}
                       if marketdata.data.summary.last != null
                         - var lastValue = Number(marketdata.data.summary.last).toLocaleString('en',mktFmtOpts);
                         - var splitLast = lastValue.split(".");
                         - var lastDecimal = splitLast[1].replace(/(\d{3})/g, '$1 ').trim();
-                        td.text-center #{splitLast[0]}.
+                        td.text-center.text-nowrap #{splitLast[0]}.
                           span.decimal #{lastDecimal}
                       if marketdata.data.summary.prev != null
                         - var prevValue = Number(marketdata.data.summary.prev).toLocaleString('en',mktFmtOpts);
                         - var splitPrev = prevValue.split(".");
                         - var prevDecimal = splitPrev[1].replace(/(\d{3})/g, '$1 ').trim();
-                        td.text-center #{splitPrev[0]}.
+                        td.text-center.text-nowrap #{splitPrev[0]}.
                           span.decimal #{prevDecimal}
                       if marketdata.data.summary.change != null || (marketdata.data.summary.last != null && marketdata.data.summary.prev != null)
                         if marketdata.data.summary.change != null
@@ -392,15 +1309,15 @@ block content
                         - var splitChange = price_change.split(".");
                         - var changeDecimal = splitChange[1].replace(/(\d{3})/g, '$1 ').trim();
                         if price_change > 0
-                          td.text-center.text-success.fw-bold +#{splitChange[0]}.
+                          td.text-center.text-nowrap.text-success.fw-bold +#{splitChange[0]}.
                             span.decimal #{changeDecimal}
                             span  %
                         else if price_change < 0
-                          td.text-center.text-danger.fw-bold #{splitChange[0]}.
+                          td.text-center.text-nowrap.text-danger.fw-bold #{splitChange[0]}.
                             span.decimal #{changeDecimal}
                             span  %
                         else
-                          td.text-center.fw-bold #{splitChange[0]}.
+                          td.text-center.text-nowrap.fw-bold #{splitChange[0]}.
                             span.decimal #{changeDecimal}
                             span  %
                     else
@@ -423,8 +1340,45 @@ block content
                   strong #{marketdata.market_name} - #{marketdata.coin}/#{marketdata.exchange} - #{settings.localization.mkt_hours}
                 .card-body
                   canvas#chart(style='height:300px;')
+        if marketdata.pool_liquidity != null
+          .row
+            .col-md-12.cardSpacer
+              .card.card-default.border-0
+                .card-header
+                  if marketdata.market_logo != null && marketdata.market_logo != ''
+                    img.align-top.market-logo(src='data:image/png;base64,' + marketdata.market_logo, title=marketdata.market_name + ' Logo', alt=marketdata.market_name + ' Logo')
+                  strong #{marketdata.market_name} - Pool Liquidity
+                table#pool-liquidity-table.table.table-bordered.summary-table.single-row-table(style='border-top:0;margin-top:0 !important;')
+                  thead
+                    tr(class=theadClasses)
+                      th.text-center.text-nowrap Provider
+                      th.text-center.text-nowrap Score
+                      th.text-center.text-nowrap Pooled #{marketdata.pool_liquidity.base_symbol}
+                      th.text-center.text-nowrap Pooled #{marketdata.pool_liquidity.quote_symbol}
+                      th.text-center.text-nowrap Total (#{marketdata.pool_liquidity.quote_symbol})
+                      th.text-center.text-nowrap Growth
+                  tbody
+                    tr
+                      td.text-center.text-nowrap #{marketdata.pool_liquidity.provider}
+                      td.text-center.text-nowrap #{(marketdata.pool_liquidity.score != null ? marketdata.pool_liquidity.score : '-')}
+                      - var pooledCoinValue = Number(marketdata.pool_liquidity.pooled_base).toLocaleString('en',mktFmtOpts);
+                      - var pooledCoinSplit = pooledCoinValue.split('.');
+                      - var pooledCoinDecimal = pooledCoinSplit[1].replace(/(\d{3})/g, '$1 ').trim();
+                      td.text-center.text-nowrap #{pooledCoinSplit[0]}.
+                        span.decimal #{pooledCoinDecimal}
+                      - var pooledQuoteValue = Number(marketdata.pool_liquidity.pooled_quote).toLocaleString('en',mktFmtOpts);
+                      - var pooledQuoteSplit = pooledQuoteValue.split('.');
+                      - var pooledQuoteDecimal = pooledQuoteSplit[1].replace(/(\d{3})/g, '$1 ').trim();
+                      td.text-center.text-nowrap #{pooledQuoteSplit[0]}.
+                        span.decimal #{pooledQuoteDecimal}
+                      - var pooledTotalValue = Number(marketdata.pool_liquidity.total_quote).toLocaleString('en',mktFmtOpts);
+                      - var pooledTotalSplit = pooledTotalValue.split('.');
+                      - var pooledTotalDecimal = pooledTotalSplit[1].replace(/(\d{3})/g, '$1 ').trim();
+                      td.text-center.text-nowrap #{pooledTotalSplit[0]}.
+                        span.decimal #{pooledTotalDecimal}
+                      td.text-center.text-nowrap #{(marketdata.pool_liquidity.growth != null ? marketdata.pool_liquidity.growth : '-')}
         .row
-          .col-md-6.col-xs-12.cardSpacer
+          .col-md-4.col-xs-12.cardSpacer
             .card.card-default.border-0.wrapper-border-0(class=theadClasses)
               .card-header(style='border-bottom-width:1px;')
                 if marketdata.market_logo != null && marketdata.market_logo != ''
@@ -433,14 +1387,20 @@ block content
               table#buy-orders.table.table-striped.table-bordered.table-hover.order-table.bottom-border-0
                 thead
                   tr(class=theadClasses)
-                    th.text-center #{settings.localization.mkt_price}
+                    th.text-center.text-nowrap #{settings.localization.mkt_price} 
                       span.small.fw-normal  (#{marketdata.exchange})
-                    th.text-center #{settings.localization.mkt_amount}
+                    th.text-center.text-nowrap #{settings.localization.mkt_amount}
                       span.small.fw-normal  (#{marketdata.coin})
-                    th.text-center #{settings.localization.mkt_total}
+                    th.text-center.text-nowrap #{settings.localization.mkt_total}
+                      span.small.fw-normal  (#{marketdata.exchange})
+                    th.text-center.text-nowrap.cumulative-coin-col Cumulative&nbsp;
+                      span.small.fw-normal  (#{marketdata.coin})
+                    th.text-center.text-nowrap.cumulative-quote-col Cumulative&nbsp;
                       span.small.fw-normal  (#{marketdata.exchange})
                 tbody
                   if marketdata.data.buys != null
+                    - var buyRunningQuantity = 0;
+                    - var buyRunningTotal = 0;
                     each buy in marketdata.data.buys
                       - var price = Number(buy.price).toLocaleString('en',mktFmtOpts);
                       - var splitPrice = price.split(".");
@@ -448,20 +1408,54 @@ block content
                       - var quantity = Number(buy.quantity).toLocaleString('en',mktFmtOpts);
                       - var splitQuantity = quantity.split(".");
                       - var quantityDecimal = splitQuantity[1].replace(/(\d{3})/g, '$1 ').trim();
+                      - buyRunningQuantity += Number(buy.quantity);
+                      - var cumulativeBuyQuantity = Number(buyRunningQuantity).toLocaleString('en',mktFmtOpts);
+                      - var splitCumulativeBuyQuantity = cumulativeBuyQuantity.split('.');
+                      - var cumulativeBuyQuantityDecimal = splitCumulativeBuyQuantity[1].replace(/(\d{3})/g, '$1 ').trim();
                       if buy.total != null
-                        - var total = Number(buy.total).toLocaleString('en',mktFmtOpts);
+                        - var totalNum = Number(buy.total);
                       else
-                        - var total = Number(parseFloat(buy.price).toFixed(8) * parseFloat(buy.quantity).toFixed(8)).toLocaleString('en',mktFmtOpts);
+                        - var totalNum = Number(parseFloat(buy.price).toFixed(8) * parseFloat(buy.quantity).toFixed(8));
+                      - buyRunningTotal += totalNum;
+                      - var total = Number(totalNum).toLocaleString('en',mktFmtOpts);
                       - var splitTotal = total.split(".");
                       - var totalDecimal = splitTotal[1].replace(/(\d{3})/g, '$1 ').trim();
+                      - var cumulativeBuyTotal = Number(buyRunningTotal).toLocaleString('en',mktFmtOpts);
+                      - var splitCumulativeBuyTotal = cumulativeBuyTotal.split('.');
+                      - var cumulativeBuyTotalDecimal = splitCumulativeBuyTotal[1].replace(/(\d{3})/g, '$1 ').trim();
                       tr
-                        td.text-center.text-success.fw-bold #{splitPrice[0]}.
+                        td.text-end.text-success.fw-bold.text-nowrap #{splitPrice[0]}.
                           span.decimal #{priceDecimal}
-                        td.text-center #{splitQuantity[0]}.
+                        td.text-end.text-nowrap #{splitQuantity[0]}.
                           span.decimal #{quantityDecimal}
-                        td.text-center #{splitTotal[0]}.
+                        td.text-end.text-nowrap #{splitTotal[0]}.
                           span.decimal #{totalDecimal}
-          .col-md-6.col-xs-12.cardSpacer
+                        td.text-end.text-nowrap.cumulative-coin-col #{splitCumulativeBuyQuantity[0]}.
+                          span.decimal #{cumulativeBuyQuantityDecimal}
+                        td.text-end.text-nowrap.cumulative-quote-col #{splitCumulativeBuyTotal[0]}.
+                          span.decimal #{cumulativeBuyTotalDecimal}
+          .col-md-4.col-xs-12.cardSpacer
+            .card.card-default.border-0.wrapper-border-0(class=theadClasses)
+              .card-header(style='border-bottom-width:1px;')
+                if marketdata.market_logo != null && marketdata.market_logo != ''
+                  img.align-top.market-logo(src='data:image/png;base64,' + marketdata.market_logo, title=marketdata.market_name + ' Logo', alt=marketdata.market_name + ' Logo')
+                strong(style='color:var(--bs-body-color)') Liquidity Depth
+                span.small.fw-normal  (#{marketdata.coin}/#{marketdata.exchange})
+                if marketdata.depth_chart != null
+                  .btn-group.btn-group-sm.float-end.ms-2(role='group' aria-label='Depth range')
+                    button.btn.btn-outline-primary.depth-range-btn(data-pct='1' type='button') 1%
+                    button.btn.btn-outline-primary.depth-range-btn(data-pct='2.5' type='button') 2.5%
+                    button.btn.btn-outline-primary.depth-range-btn(data-pct='5' type='button') 5%
+                    button.btn.btn-outline-primary.depth-range-btn(data-pct='10' type='button') 10%
+                    button.btn.btn-outline-primary.depth-range-btn.active(data-pct='25' type='button') 25%
+                    button.btn.btn-outline-primary.depth-range-btn(data-pct='50' type='button') 50%
+                  .btn-group.btn-group-sm.float-end(role='group' aria-label='Depth value mode')
+                    button.btn.btn-outline-primary.depth-value-btn(data-mode='base' type='button') #{marketdata.coin}
+                    button.btn.btn-outline-primary.depth-value-btn.active(data-mode='quote' type='button') #{marketdata.exchange}
+              .card-body(style='height: 356px;')
+                #depth-hover-value Move cursor over depth graph to inspect buy/sell values
+                canvas#depth-chart
+          .col-md-4.col-xs-12.cardSpacer
             .card.card-default.border-0.wrapper-border-0(class=theadClasses)
               .card-header(style='border-bottom-width:1px;')
                 if marketdata.market_logo != null && marketdata.market_logo != ''
@@ -470,14 +1464,20 @@ block content
               table#sell-orders.table.table-striped.table-bordered.table-hover.order-table.bottom-border-0
                 thead
                   tr(class=theadClasses)
-                    th.text-center #{settings.localization.mkt_price}
+                    th.text-center.text-nowrap #{settings.localization.mkt_price}
                       span.small.fw-normal  (#{marketdata.exchange})
-                    th.text-center #{settings.localization.mkt_amount}
+                    th.text-center.text-nowrap #{settings.localization.mkt_amount}
                       span.small.fw-normal  (#{marketdata.coin})
-                    th.text-center #{settings.localization.mkt_total}
+                    th.text-center.text-nowrap #{settings.localization.mkt_total}
+                      span.small.fw-normal  (#{marketdata.exchange})
+                    th.text-center.text-nowrap.cumulative-coin-col Cumulative
+                      span.small.fw-normal  (#{marketdata.coin})
+                    th.text-center.text-nowrap.cumulative-quote-col Cumulative
                       span.small.fw-normal  (#{marketdata.exchange})
                 tbody
                   if marketdata.data.sells != null
+                    - var sellRunningTotal = 0;
+                    - var sellRunningQuantity = 0;
                     each sell in marketdata.data.sells
                       - var price = Number(sell.price).toLocaleString('en',mktFmtOpts);
                       - var splitPrice = price.split(".");
@@ -485,21 +1485,34 @@ block content
                       - var quantity = Number(sell.quantity).toLocaleString('en',mktFmtOpts);
                       - var splitQuantity = quantity.split(".");
                       - var quantityDecimal = splitQuantity[1].replace(/(\d{3})/g, '$1 ').trim();
+                      - sellRunningQuantity += Number(sell.quantity);
+                      - var cumulativeSellQuantity = Number(sellRunningQuantity).toLocaleString('en',mktFmtOpts);
+                      - var splitCumulativeSellQuantity = cumulativeSellQuantity.split('.');
+                      - var cumulativeSellQuantityDecimal = splitCumulativeSellQuantity[1].replace(/(\d{3})/g, '$1 ').trim();
                       if sell.total != null
-                        - var total = Number(sell.total).toLocaleString('en',mktFmtOpts);
+                        - var totalNum = Number(sell.total);
                       else
-                        - var total = Number(parseFloat(sell.price).toFixed(8) * parseFloat(sell.quantity).toFixed(8)).toLocaleString('en',mktFmtOpts);
+                        - var totalNum = Number(parseFloat(sell.price).toFixed(8) * parseFloat(sell.quantity).toFixed(8));
+                      - sellRunningTotal += totalNum;
+                      - var total = Number(totalNum).toLocaleString('en',mktFmtOpts);
                       - var splitTotal = total.split(".");
                       - var totalDecimal = splitTotal[1].replace(/(\d{3})/g, '$1 ').trim();
+                      - var cumulativeSellTotal = Number(sellRunningTotal).toLocaleString('en',mktFmtOpts);
+                      - var splitCumulativeSellTotal = cumulativeSellTotal.split('.');
+                      - var cumulativeSellTotalDecimal = splitCumulativeSellTotal[1].replace(/(\d{3})/g, '$1 ').trim();
                       tr
-                        td.text-center.text-danger.fw-bold #{splitPrice[0]}.
+                        td.text-end.text-danger.fw-bold.text-nowrap #{splitPrice[0]}.
                           span.decimal #{priceDecimal}                  
-                        td.text-center #{splitQuantity[0]}.
+                        td.text-end.text-nowrap #{splitQuantity[0]}.
                           span.decimal #{quantityDecimal}
-                        td.text-center #{splitTotal[0]}.
+                        td.text-end.text-nowrap #{splitTotal[0]}.
                           span.decimal #{totalDecimal}
+                        td.text-end.text-nowrap.cumulative-coin-col #{splitCumulativeSellQuantity[0]}.
+                          span.decimal #{cumulativeSellQuantityDecimal}
+                        td.text-end.text-nowrap.cumulative-quote-col #{splitCumulativeSellTotal[0]}.
+                          span.decimal #{cumulativeSellTotalDecimal}
         .row
-          .col-md-12
+          .col-md-6
             .card.card-default.border-0
               .card-header
                 if marketdata.market_logo != null && marketdata.market_logo != ''
@@ -508,13 +1521,13 @@ block content
               table#history-table.table.table-hover.table-bordered.table-striped.table-paging(cellspacing='0')
                 thead
                   tr(class=theadClasses)
-                    th.text-center #{settings.localization.mkt_price}
+                    th.text-center.text-nowrap #{settings.localization.mkt_price}
                       span.small.fw-normal  (#{marketdata.exchange})
-                    th.text-center #{settings.localization.mkt_amount}
+                    th.text-center.text-nowrap #{settings.localization.mkt_amount}
                       span.small.fw-normal  (#{marketdata.coin})
-                    th.text-center #{settings.localization.mkt_total}
+                    th.text-center.text-nowrap #{settings.localization.mkt_total}
                       span.small.fw-normal  (#{marketdata.exchange})
-                    th.text-center #{settings.localization.mkt_time_stamp}
+                    th.text-center.text-nowrap #{settings.localization.mkt_time_stamp}
                 tbody
                   if marketdata.data.history != null
                     each order in marketdata.data.history
@@ -533,24 +1546,45 @@ block content
                         - var totalDecimal = splitTotal[1].replace(/(\d{3})/g, '$1 ').trim();
                         if order.ordertype.toUpperCase() == 'BUY'
                           tr
-                            td.text-center.text-success.fw-bold #{splitPrice[0]}.
+                            td.text-end.text-success.fw-bold.text-nowrap #{splitPrice[0]}.
                               span.decimal #{priceDecimal}   
-                            td.text-center #{splitQuantity[0]}.
+                            td.text-end.text-nowrap #{splitQuantity[0]}.
                               span.decimal #{quantityDecimal}
-                            td.text-center #{splitTotal[0]}.
+                            td.text-end.text-nowrap #{splitTotal[0]}.
                               span.decimal #{totalDecimal}
-                            td.text-center
+                            td.text-center.text-nowrap
                               span.timestampCol=order.timestamp
                         else
                           tr
-                            td.text-center.text-danger.fw-bold #{splitPrice[0]}.
+                            td.text-end.text-danger.fw-bold.text-nowrap #{splitPrice[0]}.
                               span.decimal #{priceDecimal}
-                            td.text-center #{splitQuantity[0]}.
+                            td.text-end.text-nowrap #{splitQuantity[0]}.
                               span.decimal #{quantityDecimal}
-                            td.text-center #{splitTotal[0]}.
+                            td.text-end.text-nowrap #{splitTotal[0]}.
                               span.decimal #{totalDecimal}
-                            td.text-center
+                            td.text-center.text-nowrap
                               span.timestampCol=order.timestamp
+          .col-md-6
+            .card.card-default.border-0
+              .card-header
+                if marketdata.market_logo != null && marketdata.market_logo != ''
+                  img.align-top.market-logo(src='data:image/png;base64,' + marketdata.market_logo, title=marketdata.market_name + ' Logo', alt=marketdata.market_name + ' Logo')
+                strong #{marketdata.market_name} - Price History
+                if marketdata.price_history_30d != null && marketdata.price_history_30d.has_data == true
+                  .btn-group.btn-group-sm.float-end(role='group' aria-label='Price history range')
+                    button.btn.btn-outline-primary.price-history-range-btn(data-days='1' type='button') 24h
+                    button.btn.btn-outline-primary.price-history-range-btn(data-days='7' type='button') 7d
+                    button.btn.btn-outline-primary.price-history-range-btn.active(data-days='30' type='button') 30d
+                    button.btn.btn-outline-primary.price-history-range-btn(data-days='90' type='button') 90d
+                    button.btn.btn-outline-primary.price-history-range-btn(data-days='180' type='button') 180d
+                    button.btn.btn-outline-primary.price-history-range-btn(data-days='365' type='button') 365d
+                    button.btn.btn-outline-primary.price-history-range-btn(data-days='all' type='button') All
+              .card-body(style='height: 420px;')
+                if marketdata.price_history_30d != null && marketdata.price_history_30d.has_data == true
+                  #price-hover-value Move cursor over price graph to inspect values
+                  canvas#price-history-30d
+                else
+                  .text-muted No 30-day historical market data found yet. Run historical market sync to populate this chart.
     else
       .alert.alert-danger.alert-dismissible.fade.show(role='alert')
         button.btn-close(type='button', data-bs-dismiss='alert')

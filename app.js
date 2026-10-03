@@ -7,6 +7,7 @@ var express = require('express'),
     settings = require('./lib/settings'),
     routes = require('./routes/index'),
     lib = require('./lib/explorer'),
+    historicalCollectors = require('./lib/historical_collectors'),
     db = require('./lib/database'),
     package_metadata = require('./package.json');
 var app = express();
@@ -761,6 +762,141 @@ app.use('/ext/getlastorphans/:min', function(req, res) {
     res.end(settings.localization.method_disabled);
 });
 
+app.use('/ext/gethistoricalmarket/:market/:coin_symbol/:pair_symbol', function(req, res) {
+  const cfg = (settings.api_page && settings.api_page.public_apis && settings.api_page.public_apis.ext ? settings.api_page.public_apis.ext.gethistoricalmarket : null);
+
+  if (settings.api_page.enabled == true && cfg != null && cfg.enabled == true) {
+    let start = Number.parseInt(req.query.start, 10);
+    let length = Number.parseInt(req.query.length, 10);
+
+    if (Number.isNaN(start) || start < 0)
+      start = 0;
+
+    if (Number.isNaN(length) || length < 1)
+      length = 100;
+
+    if (cfg.max_items_per_query != null && !isNaN(cfg.max_items_per_query))
+      length = Math.min(length, Number(cfg.max_items_per_query));
+
+    historicalCollectors.get_market_snapshots(
+      req.params.market,
+      req.params.coin_symbol.toUpperCase(),
+      req.params.pair_symbol.toUpperCase(),
+      start,
+      length,
+      function(rows) {
+        res.json(rows || []);
+      }
+    );
+  } else
+    res.end(settings.localization.method_disabled);
+});
+
+app.use('/ext/gethistoricaltrades/:market/:coin_symbol/:pair_symbol', function(req, res) {
+  const cfg = (settings.api_page && settings.api_page.public_apis && settings.api_page.public_apis.ext ? settings.api_page.public_apis.ext.gethistoricaltrades : null);
+
+  if (settings.api_page.enabled == true && cfg != null && cfg.enabled == true) {
+    let start = Number.parseInt(req.query.start, 10);
+    let length = Number.parseInt(req.query.length, 10);
+
+    if (Number.isNaN(start) || start < 0)
+      start = 0;
+
+    if (Number.isNaN(length) || length < 1)
+      length = 100;
+
+    if (cfg.max_items_per_query != null && !isNaN(cfg.max_items_per_query))
+      length = Math.min(length, Number(cfg.max_items_per_query));
+
+    historicalCollectors.get_trade_history(
+      req.params.market,
+      req.params.coin_symbol.toUpperCase(),
+      req.params.pair_symbol.toUpperCase(),
+      start,
+      length,
+      function(rows) {
+        res.json(rows || []);
+      }
+    );
+  } else
+    res.end(settings.localization.method_disabled);
+});
+
+app.use('/ext/gethistoricalliquidity/:market/:coin_symbol/:pair_symbol', function(req, res) {
+  const cfg = (settings.api_page && settings.api_page.public_apis && settings.api_page.public_apis.ext ? settings.api_page.public_apis.ext.gethistoricalliquidity : null);
+
+  if (settings.api_page.enabled == true && cfg != null && cfg.enabled == true) {
+    let start = Number.parseInt(req.query.start, 10);
+    let length = Number.parseInt(req.query.length, 10);
+
+    if (Number.isNaN(start) || start < 0)
+      start = 0;
+
+    if (Number.isNaN(length) || length < 1)
+      length = 100;
+
+    if (cfg.max_items_per_query != null && !isNaN(cfg.max_items_per_query))
+      length = Math.min(length, Number(cfg.max_items_per_query));
+
+    const fromTimestampRaw = (req.query.from_timestamp != null ? req.query.from_timestamp : (req.query.start_timestamp != null ? req.query.start_timestamp : req.query.since_timestamp));
+    const toTimestampRaw = (req.query.to_timestamp != null ? req.query.to_timestamp : req.query.end_timestamp);
+    const providerRaw = (req.query.provider == null ? '' : req.query.provider.toString().trim().toLowerCase());
+    let fromTimestamp = Number.parseInt(fromTimestampRaw, 10);
+    let toTimestamp = Number.parseInt(toTimestampRaw, 10);
+    let provider = null;
+
+    if (Number.isNaN(fromTimestamp) || fromTimestamp < 0)
+      fromTimestamp = null;
+
+    if (Number.isNaN(toTimestamp) || toTimestamp < 0)
+      toTimestamp = null;
+
+    if (providerRaw === 'exchange' || providerRaw === 'nestex_api' || providerRaw === 'all')
+      provider = providerRaw;
+
+    historicalCollectors.get_liquidity_history(
+      req.params.market,
+      req.params.coin_symbol.toUpperCase(),
+      req.params.pair_symbol.toUpperCase(),
+      {
+        start: start,
+        length: length,
+        from_timestamp: fromTimestamp,
+        to_timestamp: toTimestamp,
+        provider: provider
+      },
+      function(rows) {
+        res.json(rows || []);
+      }
+    );
+  } else
+    res.end(settings.localization.method_disabled);
+});
+
+app.use('/ext/getcollectorhealth', function(req, res) {
+  const cfg = (settings.api_page && settings.api_page.public_apis && settings.api_page.public_apis.ext ? settings.api_page.public_apis.ext.getcollectorhealth : null);
+
+  if (settings.api_page.enabled == true && cfg != null && cfg.enabled == true) {
+    let start = Number.parseInt(req.query.start, 10);
+    let length = Number.parseInt(req.query.length, 10);
+    const collector = (req.query.collector == null ? '' : req.query.collector.toString().trim());
+
+    if (Number.isNaN(start) || start < 0)
+      start = 0;
+
+    if (Number.isNaN(length) || length < 1)
+      length = 100;
+
+    if (cfg.max_items_per_query != null && !isNaN(cfg.max_items_per_query))
+      length = Math.min(length, Number(cfg.max_items_per_query));
+
+    historicalCollectors.get_collector_health(collector, start, length, function(rows) {
+      res.json(rows || []);
+    });
+  } else
+    res.end(settings.localization.method_disabled);
+});
+
 app.use('/ext/getaddresstxs/:address/:start/:length', function(req, res) {
   // check if the getaddresstxs api is enabled or else check the headers to see if it matches an internal ajax request from the explorer itself (TODO: come up with a more secure method of whitelisting ajax calls from the explorer)
   if ((settings.api_page.enabled == true && settings.api_page.public_apis.ext.getaddresstxs.enabled == true) || (req.headers['x-requested-with'] != null && req.headers['x-requested-with'].toLowerCase() == 'xmlhttprequest' && req.headers.referer != null && req.headers.accept.indexOf('text/javascript') > -1 && req.headers.accept.indexOf('application/json') > -1)) {
@@ -1038,6 +1174,44 @@ app.use('/ext/getnetworkpeers', function(req, res) {
 
         res.json(connection_peers);
       }
+    });
+  } else
+    res.end(settings.localization.method_disabled);
+});
+
+app.use('/ext/getnetworknodes', function(req, res) {
+  // check if the getnetworknodes api is enabled or else check the headers to see if it matches an internal ajax request from the explorer itself (TODO: come up with a more secure method of whitelisting ajax calls from the explorer)
+  if ((settings.api_page.enabled == true && settings.api_page.public_apis.ext.getnetworknodes.enabled == true) || (req.headers['x-requested-with'] != null && req.headers['x-requested-with'].toLowerCase() == 'xmlhttprequest' && req.headers.referer != null && req.headers.accept.indexOf('text/javascript') > -1 && req.headers.accept.indexOf('application/json') > -1)) {
+    // split url suffix by forward slash and remove blank entries
+    const split = req.url.split('/').filter(function(v) { return v; });
+    const mode = (split.length > 0 && split[0] == 'all') ? 'all' : 'full';
+
+    db.get_network_nodes(mode, function(nodes) {
+      res.json(nodes);
+    });
+  } else
+    res.end(settings.localization.method_disabled);
+});
+
+app.use('/ext/getnetworkstats', function(req, res) {
+  // check if the getnetworkstats api is enabled or else check the headers to see if it matches an internal ajax request from the explorer itself (TODO: come up with a more secure method of whitelisting ajax calls from the explorer)
+  if ((settings.api_page.enabled == true && settings.api_page.public_apis.ext.getnetworkstats.enabled == true) || (req.headers['x-requested-with'] != null && req.headers['x-requested-with'].toLowerCase() == 'xmlhttprequest' && req.headers.referer != null && req.headers.accept.indexOf('text/javascript') > -1 && req.headers.accept.indexOf('application/json') > -1)) {
+    // split url suffix by forward slash and remove blank entries
+    const split = req.url.split('/').filter(function(v) { return v; });
+    const mode = (split.length > 0 && split[0] == 'all') ? 'all' : 'full';
+
+    db.get_network_stats(mode, function(stats) {
+      res.json(stats);
+    });
+  } else
+    res.end(settings.localization.method_disabled);
+});
+
+app.use('/ext/getaddnodecandidates', function(req, res) {
+  // check if the getaddnodecandidates api is enabled or else check the headers to see if it matches an internal ajax request from the explorer itself (TODO: come up with a more secure method of whitelisting ajax calls from the explorer)
+  if ((settings.api_page.enabled == true && settings.api_page.public_apis.ext.getaddnodecandidates.enabled == true) || (req.headers['x-requested-with'] != null && req.headers['x-requested-with'].toLowerCase() == 'xmlhttprequest' && req.headers.referer != null && req.headers.accept.indexOf('text/javascript') > -1 && req.headers.accept.indexOf('application/json') > -1)) {
+    db.get_addnode_candidates(function(nodes) {
+      res.json(nodes);
     });
   } else
     res.end(settings.localization.method_disabled);

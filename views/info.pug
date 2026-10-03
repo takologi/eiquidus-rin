@@ -32,7 +32,12 @@ block content
           hr
         - var hide_rpc_api_section = !(settings.api_page.public_apis.rpc.getdifficulty.enabled == true && settings.api_cmds['getdifficulty'] != null && settings.api_cmds['getdifficulty'] != '') && !(settings.api_page.public_apis.rpc.getconnectioncount.enabled == true && settings.api_cmds['getconnectioncount'] != null && settings.api_cmds['getconnectioncount'] != '') && !(settings.api_page.public_apis.rpc.getblockcount.enabled == true && settings.api_cmds['getblockcount'] != null && settings.api_cmds['getblockcount'] != '') && !(settings.api_page.public_apis.rpc.getblockhash.enabled == true && settings.api_cmds['getblockhash'] != null && settings.api_cmds['getblockhash'] != '') && !(settings.api_page.public_apis.rpc.getblock.enabled == true && settings.api_cmds['getblock'] != null && settings.api_cmds['getblock'] != '') && !(settings.api_page.public_apis.rpc.getrawtransaction.enabled == true && settings.api_cmds['getrawtransaction'] != null && settings.api_cmds['getrawtransaction'] != '') && !(settings.api_page.public_apis.rpc.getnetworkhashps.enabled == true && settings.shared_pages.show_hashrate == true && settings.api_cmds['getnetworkhashps'] != null && settings.api_cmds['getnetworkhashps'] != '') && !(settings.api_page.public_apis.rpc.getvotelist.enabled == true && settings.api_cmds['getvotelist'] != null && settings.api_cmds['getvotelist'] != '') && !(settings.api_page.public_apis.rpc.getmasternodecount.enabled == true && settings.api_cmds['getmasternodecount'] != null && settings.api_cmds['getmasternodecount'] != '') && (!settings.blockchain_specific.heavycoin.enabled || (!(settings.blockchain_specific.heavycoin.public_apis.getmaxmoney.enabled == true && settings.blockchain_specific.heavycoin.api_cmds['getmaxmoney'] != null && settings.blockchain_specific.heavycoin.api_cmds['getmaxmoney'] != '') && !(settings.blockchain_specific.heavycoin.public_apis.getmaxvote.enabled == true && settings.blockchain_specific.heavycoin.api_cmds['getmaxvote'] != null && settings.blockchain_specific.heavycoin.api_cmds['getmaxvote'] != '') && !(settings.blockchain_specific.heavycoin.public_apis.getvote.enabled == true && settings.blockchain_specific.heavycoin.api_cmds['getvote'] != null && settings.blockchain_specific.heavycoin.api_cmds['getvote'] != '') && !(settings.blockchain_specific.heavycoin.public_apis.getphase.enabled == true && settings.blockchain_specific.heavycoin.api_cmds['getphase'] != null && settings.blockchain_specific.heavycoin.api_cmds['getphase'] != '') && !(settings.blockchain_specific.heavycoin.public_apis.getreward.enabled == true && settings.blockchain_specific.heavycoin.api_cmds['getreward'] != null && settings.blockchain_specific.heavycoin.api_cmds['getreward'] != '') && !(settings.blockchain_specific.heavycoin.public_apis.getsupply.enabled == true && settings.blockchain_specific.heavycoin.api_cmds['getsupply'] != null && settings.blockchain_specific.heavycoin.api_cmds['getsupply'] != '') && !(settings.blockchain_specific.heavycoin.public_apis.getnextrewardestimate.enabled == true && settings.blockchain_specific.heavycoin.api_cmds['getnextrewardestimate'] != null && settings.blockchain_specific.heavycoin.api_cmds['getnextrewardestimate'] != '') && !(settings.blockchain_specific.heavycoin.public_apis.getnextrewardwhenstr.enabled == true && settings.blockchain_specific.heavycoin.api_cmds['getnextrewardwhenstr'] != null && settings.blockchain_specific.heavycoin.api_cmds['getnextrewardwhenstr'] != '')));
         - var getlastorphans_config = (settings.api_page != null && settings.api_page.public_apis != null && settings.api_page.public_apis.ext != null && settings.api_page.public_apis.ext.getlastorphans != null ? settings.api_page.public_apis.ext.getlastorphans : {enabled: true, max_items_per_query: 100});
-        - var hide_ext_api_section = !settings.api_page.public_apis.ext.getmoneysupply.enabled && !settings.api_page.public_apis.ext.getdistribution.enabled && !settings.api_page.public_apis.ext.getaddress.enabled && !settings.api_page.public_apis.ext.getaddresstxs.enabled && !settings.api_page.public_apis.ext.gettx.enabled && !settings.api_page.public_apis.ext.getbalance.enabled && !settings.api_page.public_apis.ext.getlasttxs.enabled && !getlastorphans_config.enabled && !settings.api_page.public_apis.ext.getcurrentprice.enabled && !settings.api_page.public_apis.ext.getnetworkpeers.enabled && !settings.api_page.public_apis.ext.getbasicstats.enabled && !settings.api_page.public_apis.ext.getsummary.enabled && !(settings.api_page.public_apis.ext.getmasternodelist.enabled && settings.api_cmds['getmasternodelist'] != null && settings.api_cmds['getmasternodelist'] != '') && !settings.api_page.public_apis.ext.getmasternoderewards.enabled && !settings.api_page.public_apis.ext.getmasternoderewardstotal.enabled && pluginApisExt.length == 0;
+        - var gethistoricalmarket_config = (settings.api_page != null && settings.api_page.public_apis != null && settings.api_page.public_apis.ext != null && settings.api_page.public_apis.ext.gethistoricalmarket != null ? settings.api_page.public_apis.ext.gethistoricalmarket : {enabled: false, max_items_per_query: 500});
+        - var gethistoricaltrades_config = (settings.api_page != null && settings.api_page.public_apis != null && settings.api_page.public_apis.ext != null && settings.api_page.public_apis.ext.gethistoricaltrades != null ? settings.api_page.public_apis.ext.gethistoricaltrades : {enabled: false, max_items_per_query: 500});
+        - var gethistoricalliquidity_config = (settings.api_page != null && settings.api_page.public_apis != null && settings.api_page.public_apis.ext != null && settings.api_page.public_apis.ext.gethistoricalliquidity != null ? settings.api_page.public_apis.ext.gethistoricalliquidity : {enabled: false, max_items_per_query: 500});
+        - var getcollectorhealth_config = (settings.api_page != null && settings.api_page.public_apis != null && settings.api_page.public_apis.ext != null && settings.api_page.public_apis.ext.getcollectorhealth != null ? settings.api_page.public_apis.ext.getcollectorhealth : {enabled: false, max_items_per_query: 500});
+        - var hide_ext_api_section = !settings.api_page.public_apis.ext.getmoneysupply.enabled && !settings.api_page.public_apis.ext.getdistribution.enabled && !settings.api_page.public_apis.ext.getaddress.enabled && !settings.api_page.public_apis.ext.getaddresstxs.enabled && !settings.api_page.public_apis.ext.gettx.enabled && !settings.api_page.public_apis.ext.getbalance.enabled && !settings.api_page.public_apis.ext.getlasttxs.enabled && !getlastorphans_config.enabled && !settings.api_page.public_apis.ext.getcurrentprice.enabled && !settings.api_page.public_apis.ext.getnetworkpeers.enabled && !settings.api_page.public_apis.ext.getnetworknodes.enabled && !settings.api_page.public_apis.ext.getnetworkstats.enabled && !settings.api_page.public_apis.ext.getaddnodecandidates.enabled && !settings.api_page.public_apis.ext.getbasicstats.enabled && !settings.api_page.public_apis.ext.getsummary.enabled && !(settings.api_page.public_apis.ext.getmasternodelist.enabled && settings.api_cmds['getmasternodelist'] != null && settings.api_cmds['getmasternodelist'] != '') && !settings.api_page.public_apis.ext.getmasternoderewards.enabled && !settings.api_page.public_apis.ext.getmasternoderewardstotal.enabled && pluginApisExt.length == 0;
+        - hide_ext_api_section = hide_ext_api_section && !gethistoricalmarket_config.enabled && !gethistoricaltrades_config.enabled && !gethistoricalliquidity_config.enabled && !getcollectorhealth_config.enabled;
         - var market_currency = (settings.markets_page.market_price == 'COINGECKO' ? (settings.markets_page.coingecko_currency == null || settings.markets_page.coingecko_currency == '' ? '' : settings.markets_page.coingecko_currency) : (settings.markets_page.default_exchange.trading_pair != null && settings.markets_page.default_exchange.trading_pair.indexOf('/') > -1 ? settings.markets_page.default_exchange.trading_pair.split('/')[1] : '')).toUpperCase();
         if !hide_rpc_api_section
           h3 #{settings.localization.api_calls}
@@ -230,6 +235,52 @@ block content
                     em Note: [length] is limited to returning #{getlastorphans_config.max_items_per_query} records per query
                   div
                     a(href='/ext/getlastorphans/0/0/25') #{address}/ext/getlastorphans/0/0/25
+            if gethistoricalmarket_config.enabled == true
+              li
+                p
+                  div.fw-bold gethistoricalmarket (/ext/gethistoricalmarket/market/coin_symbol/pair_symbol?start=&length=)
+                  div
+                    em Returns historical market snapshots for a trading pair
+                  div
+                    em Note: [length] is limited to returning #{gethistoricalmarket_config.max_items_per_query} records per query
+                  div
+                    a(href='/ext/gethistoricalmarket/nestex/RIN/USDT?start=0&length=100') #{address}/ext/gethistoricalmarket/nestex/RIN/USDT?start=0&length=100
+            if gethistoricaltrades_config.enabled == true
+              li
+                p
+                  div.fw-bold gethistoricaltrades (/ext/gethistoricaltrades/market/coin_symbol/pair_symbol?start=&length=)
+                  div
+                    em Returns historical trades for a trading pair
+                  div
+                    em Note: [length] is limited to returning #{gethistoricaltrades_config.max_items_per_query} records per query
+                  div
+                    a(href='/ext/gethistoricaltrades/nestex/RIN/USDT?start=0&length=100') #{address}/ext/gethistoricaltrades/nestex/RIN/USDT?start=0&length=100
+            if gethistoricalliquidity_config.enabled == true
+              li
+                p
+                  div.fw-bold gethistoricalliquidity (/ext/gethistoricalliquidity/market/coin_symbol/pair_symbol?start=&length=&from_timestamp=&to_timestamp=&provider=)
+                  div
+                    em Returns historical liquidity snapshots (exchange orderbook and/or NestEx API source)
+                  div
+                    em Note: [start] is a row offset for pagination (0 = newest row), not a timestamp
+                  div
+                    em Optional: filter by unix timestamps (seconds) via [from_timestamp] and [to_timestamp]
+                  div
+                    em Optional: [provider] can be exchange, nestex_api or all
+                  div
+                    em Note: [length] is limited to returning #{gethistoricalliquidity_config.max_items_per_query} records per query
+                  div
+                    a(href='/ext/gethistoricalliquidity/nestex/RIN/USDT?start=0&length=100&provider=nestex_api') #{address}/ext/gethistoricalliquidity/nestex/RIN/USDT?start=0&length=100&provider=nestex_api
+            if getcollectorhealth_config.enabled == true
+              li
+                p
+                  div.fw-bold getcollectorhealth (/ext/getcollectorhealth?collector=&start=&length=)
+                  div
+                    em Returns historical status logs for collectors
+                  div
+                    em Note: [length] is limited to returning #{getcollectorhealth_config.max_items_per_query} records per query
+                  div
+                    a(href='/ext/getcollectorhealth?collector=historical_market&start=0&length=100') #{address}/ext/getcollectorhealth?collector=historical_market&start=0&length=100
             if settings.api_page.public_apis.ext.getcurrentprice.enabled == true
               li
                 p
@@ -244,6 +295,27 @@ block content
                   div
                     em Returns the list of network peers that have connected to the explorer node in the last 24 hours
                   a(href='/ext/getnetworkpeers') #{address}/ext/getnetworkpeers
+            if settings.api_page.public_apis.ext.getnetworknodes.enabled == true
+              li
+                p
+                  div.fw-bold getnetworknodes/full or /all
+                  div
+                    em Returns nodes discovered/verified by the network crawler ("full" = currently reachable only, "all" = every known node with unreachable addresses masked as "internal")
+                  a(href='/ext/getnetworknodes/full') #{address}/ext/getnetworknodes/full
+            if settings.api_page.public_apis.ext.getnetworkstats.enabled == true
+              li
+                p
+                  div.fw-bold getnetworkstats
+                  div
+                    em Returns country/protocol/subversion counts aggregated from currently-reachable network crawler nodes
+                  a(href='/ext/getnetworkstats') #{address}/ext/getnetworkstats
+            if settings.api_page.public_apis.ext.getaddnodecandidates.enabled == true
+              li
+                p
+                  div.fw-bold getaddnodecandidates
+                  div
+                    em Returns reachable nodes matching the configured addnode subversion regex and minimum protocol version
+                  a(href='/ext/getaddnodecandidates') #{address}/ext/getaddnodecandidates
             if settings.api_page.public_apis.ext.getbasicstats.enabled == true
               li
                 p

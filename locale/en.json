@@ -137,10 +137,11 @@
 
   // network view
   "net_title": "{1} Network Peers",
-  "net_description": "A listing of {1} network peers that have connected to the explorer node in the last 24 hours",
+  "net_description": "A listing of {1} network peers discovered and verified reachable by the network crawler",
   "net_addnodes": "Add Nodes",
   "net_connections": "Connections",
   "net_address": "Address",
+  "net_address_hash": "Address Hash",
   "net_protocol": "Protocol",
   "net_subversion": "Sub-version",
   "net_country": "Country",

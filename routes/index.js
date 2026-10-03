@@ -3,8 +3,10 @@ const router = express.Router();
 const settings = require('../lib/settings');
 const db = require('../lib/database');
 const lib = require('../lib/explorer');
+const historicalCollectors = require('../lib/historical_collectors');
 const async = require('async');
 const Orphans = require('../models/orphans');
+const mongoose = require('mongoose');
 
 function send_block_data(res, block, txs, title_text, orphan, orphan_siblings) {
   if (orphan_siblings === undefined) orphan_siblings = null;
@@ -220,6 +222,265 @@ function get_style_hash() {
 
 function get_theme_hash() {
   return get_file_timestamp('./public/css/themes/' + settings.shared_pages.theme.toLowerCase() + '/bootstrap.min.css');
+}
+
+const MARKET_HISTORY_SOURCE_COLLECTIONS = {
+  m5: 'historical_market_5m',
+  h1: 'historical_market_hourly',
+  d1: 'historical_market_daily'
+};
+
+function normalize_market_history_rows(rows) {
+  const byTs = new Map();
+
+  (rows || []).forEach((row) => {
+    const ts = Number(row.timestamp != null ? row.timestamp : row.x);
+    let last = Number((row.last != null ? row.last : row.close));
+    let bid = Number(row.bid);
+    let ask = Number(row.ask);
+
+    if (!(ts > 0) || isNaN(ts))
+      return;
+
+    last = (last > 0 && !isNaN(last) ? last : null);
+    bid = (bid > 0 && !isNaN(bid) ? bid : null);
+    ask = (ask > 0 && !isNaN(ask) ? ask : null);
+
+    if (bid != null && ask != null && ask < bid)
+      ask = bid;
+
+    const existing = byTs.get(ts) || { x: ts, last: null, bid: null, ask: null };
+
+    if (existing.last == null && last != null)
+      existing.last = last;
+
+    if (existing.bid == null && bid != null)
+      existing.bid = bid;
+
+    if (existing.ask == null && ask != null)
+      existing.ask = ask;
+
+    byTs.set(ts, existing);
+  });
+
+  return Array.from(byTs.values()).sort((a, b) => a.x - b.x);
+}
+
+function downsample_market_history_rows(rows, maxPoints) {
+  const source = (Array.isArray(rows) ? rows.slice() : []);
+
+  if (source.length <= maxPoints)
+    return source;
+
+  source.sort((a, b) => Number(a.x) - Number(b.x));
+  const sampled = [];
+
+  for (let i = 0; i < maxPoints; i++) {
+    const idx = Math.round((i * (source.length - 1)) / (maxPoints - 1));
+    sampled.push(source[idx]);
+  }
+
+  return sampled;
+}
+
+function rows_to_series(rows, field) {
+  return (rows || []).filter((r) => r[field] != null).map((r) => ({ x: Number(r.x), y: Number(r[field]) }));
+}
+
+function normalize_market_history_range(rangeRaw) {
+  if (rangeRaw == null)
+    return '30';
+
+  const v = rangeRaw.toString().trim().toLowerCase();
+
+  if (v === 'all')
+    return 'all';
+
+  const n = Number.parseInt(v, 10);
+
+  if (Number.isNaN(n) || n <= 0)
+    return '30';
+
+  if (n <= 1)
+    return '1';
+  if (n <= 7)
+    return '7';
+  if (n <= 30)
+    return '30';
+  if (n <= 90)
+    return '90';
+  if (n <= 180)
+    return '180';
+  if (n <= 365)
+    return '365';
+
+  return 'all';
+}
+
+function get_default_market_history_source(range) {
+  if (range === '1' || range === '7')
+    return 'm5';
+
+  if (range === '30')
+    return 'h1';
+
+  return 'd1';
+}
+
+function get_market_history_window_start(range, sourceKey) {
+  const nowTs = Math.floor(Date.now() / 1000);
+
+  if (range === 'all') {
+    if (sourceKey === 'm5')
+      return nowTs - (30 * 86400);
+    if (sourceKey === 'h1')
+      return nowTs - (400 * 86400);
+
+    return null;
+  }
+
+  const days = Number.parseInt(range, 10);
+
+  if (Number.isNaN(days) || days <= 0)
+    return nowTs - (30 * 86400);
+
+  return nowTs - (days * 86400);
+}
+
+async function fetch_market_history_rows(collectionName, filter, projection, fromTimestamp, limitRows) {
+  const nativeDb = (mongoose.connection != null ? mongoose.connection.db : null);
+
+  if (nativeDb == null)
+    return [];
+
+  const query = Object.assign({}, filter);
+
+  if (fromTimestamp != null)
+    query.timestamp = { $gte: Number(fromTimestamp) };
+
+  const finalLimit = (limitRows != null && Number(limitRows) > 0 ? Number(limitRows) : 25000);
+
+  try {
+    const rows = await nativeDb.collection(collectionName)
+      .find(query, { projection: projection })
+      .sort({ timestamp: -1 })
+      .limit(finalLimit)
+      .toArray();
+
+    return rows.reverse();
+  } catch {
+    return [];
+  }
+}
+
+async function get_market_history_payload(marketId, coinSymbol, pairSymbol, rangeRaw, sourceRaw, maxPointsRaw) {
+  const pairFilter = {
+    market: marketId,
+    coin_symbol: coinSymbol.toUpperCase(),
+    pair_symbol: pairSymbol.toUpperCase()
+  };
+
+  const range = normalize_market_history_range(rangeRaw);
+  const requestedSource = (sourceRaw == null ? 'auto' : sourceRaw.toString().trim().toLowerCase());
+  const defaultSource = get_default_market_history_source(range);
+  const maxPoints = Math.min(Math.max(Number.parseInt(maxPointsRaw, 10) || 300, 25), 1000);
+  const sourceOrder = [];
+
+  if (requestedSource === 'm5' || requestedSource === 'h1' || requestedSource === 'd1')
+    sourceOrder.push(requestedSource);
+  else
+    sourceOrder.push(defaultSource);
+
+  ['m5', 'h1', 'd1'].forEach((k) => {
+    if (!sourceOrder.includes(k))
+      sourceOrder.push(k);
+  });
+
+  const projection = { timestamp: 1, last: 1, close: 1, bid: 1, ask: 1, _id: 0 };
+  let selectedSource = sourceOrder[0];
+  let selectedRows = [];
+
+  for (let i = 0; i < sourceOrder.length; i++) {
+    const sourceKey = sourceOrder[i];
+    const collectionName = MARKET_HISTORY_SOURCE_COLLECTIONS[sourceKey];
+    const fromTimestamp = get_market_history_window_start(range, sourceKey);
+    const rows = await fetch_market_history_rows(collectionName, pairFilter, projection, fromTimestamp, 25000);
+    const normalizedRows = normalize_market_history_rows(rows);
+
+    if (normalizedRows.length > 0 || i === sourceOrder.length - 1) {
+      selectedSource = sourceKey;
+      selectedRows = normalizedRows;
+      break;
+    }
+  }
+
+  const sampledRows = downsample_market_history_rows(selectedRows, maxPoints);
+
+  return {
+    ok: true,
+    market: marketId,
+    coin_symbol: coinSymbol.toUpperCase(),
+    pair_symbol: pairSymbol.toUpperCase(),
+    range: range,
+    source: selectedSource,
+    points: sampledRows,
+    datasets: {
+      bid: rows_to_series(sampledRows, 'bid'),
+      last: rows_to_series(sampledRows, 'last'),
+      ask: rows_to_series(sampledRows, 'ask')
+    }
+  };
+}
+
+async function check_market_history_exists(pairFilter) {
+  const nativeDb = (mongoose.connection != null ? mongoose.connection.db : null);
+
+  if (nativeDb == null)
+    return false;
+
+  try {
+    const [row5m, rowHourly, rowDaily] = await Promise.all([
+      nativeDb.collection('historical_market_5m').findOne(pairFilter, { projection: { _id: 1 } }),
+      nativeDb.collection('historical_market_hourly').findOne(pairFilter, { projection: { _id: 1 } }),
+      nativeDb.collection('historical_market_daily').findOne(pairFilter, { projection: { _id: 1 } })
+    ]);
+
+    return (row5m != null || rowHourly != null || rowDaily != null);
+  } catch {
+    return false;
+  }
+}
+
+async function fetch_history_point_before_timestamp(pairFilter, beforeTimestamp) {
+  const nativeDb = (mongoose.connection != null ? mongoose.connection.db : null);
+
+  if (nativeDb == null)
+    return null;
+
+  const query = Object.assign({}, pairFilter, { timestamp: { $lte: Number(beforeTimestamp) } });
+  const projection = { timestamp: 1, last: 1, close: 1, bid: 1, ask: 1, _id: 0 };
+  const collections = ['historical_market_hourly', 'historical_market_daily', 'historical_market_5m'];
+
+  for (let i = 0; i < collections.length; i++) {
+    try {
+      const row = await nativeDb.collection(collections[i])
+        .find(query, { projection: projection })
+        .sort({ timestamp: -1 })
+        .limit(1)
+        .next();
+
+      if (row != null) {
+        const normalized = normalize_market_history_rows([row]);
+
+        if (normalized.length > 0 && normalized[0].last != null)
+          return normalized[0];
+      }
+    } catch {
+      // continue to next collection fallback
+    }
+  }
+
+  return null;
 }
 
 /* GET functions */
@@ -677,6 +938,28 @@ router.get('/info', function(req, res) {
   }
 });
 
+router.get('/markets/history/:market/:coin_symbol/:pair_symbol', function(req, res) {
+  if (settings.markets_page.enabled != true)
+    return res.status(404).json({ error: 'markets_disabled' });
+
+  const marketId = req.params.market;
+  const coinSymbol = req.params.coin_symbol;
+  const pairSymbol = req.params.pair_symbol;
+  const pairKey = coinSymbol.toLowerCase() + '/' + pairSymbol.toLowerCase();
+  const exchangeSettings = (settings.markets_page.exchanges != null ? settings.markets_page.exchanges[marketId] : null);
+
+  if (exchangeSettings == null || exchangeSettings.enabled != true || exchangeSettings.trading_pairs.findIndex((p) => p.toLowerCase() == pairKey) < 0)
+    return res.status(404).json({ error: 'market_pair_not_found' });
+
+  get_market_history_payload(marketId, coinSymbol, pairSymbol, req.query.range, req.query.source, req.query.max_points)
+    .then((payload) => {
+      res.json(payload);
+    })
+    .catch(() => {
+      res.status(500).json({ error: 'history_fetch_failed' });
+    });
+});
+
 router.get('/markets/:market/:coin_symbol/:pair_symbol', function(req, res) {
   // ensure markets page is enabled
   if (settings.markets_page.enabled == true) {
@@ -721,22 +1004,141 @@ router.get('/markets/:market/:coin_symbol/:pair_symbol', function(req, res) {
           url: url
         };
 
-        // lookup the last updated date if necessary
-        get_last_updated_date(settings.markets_page.page_header.show_last_updated, 'markets_last_updated', function(last_updated_date) {
-          res.render(
-            './market',
-            {
-              active: 'markets',
-              marketdata: marketdata,
-              market: market_id,
-              last_updated: last_updated_date,
-              showSync: db.check_show_sync_message(),
-              customHash: get_custom_hash(),
-              styleHash: get_style_hash(),
-              themeHash: get_theme_hash(),
-              page_title_prefix: settings.localization.mkt_title.replace('{1}', marketdata.market_name + ' (' + marketdata.coin + '/' + marketdata.exchange + ')')
+        function buildDepthLevels(orderRows) {
+          const rows = (Array.isArray(orderRows) ? orderRows : []);
+          const levels = [];
+
+          rows.forEach((row) => {
+            const price = Number(row.price);
+            const quantity = Number(row.quantity);
+            const totalQuote = (row.total != null ? Number(row.total) : (price * quantity));
+
+            if (price > 0 && quantity > 0 && totalQuote > 0 && !isNaN(price) && !isNaN(quantity) && !isNaN(totalQuote)) {
+              levels.push({
+                price: price,
+                quantity: quantity,
+                total_quote: totalQuote
+              });
             }
-          );
+          });
+
+          return levels;
+        }
+
+        const baseSymbol = coin_symbol.toUpperCase();
+        const quoteSymbol = pair_symbol.toUpperCase();
+        const summaryLastPrice = Number((data && data.summary ? data.summary.last : 0) || 0);
+
+        const depthChart = {
+          base_symbol: baseSymbol,
+          quote_symbol: quoteSymbol,
+          center_price: (summaryLastPrice > 0 ? summaryLastPrice : null),
+          default_span_pct: 25,
+          span_options_pct: [1, 2.5, 5, 10, 25, 50],
+          bids: buildDepthLevels((data && data.buys ? data.buys : [])),
+          asks: buildDepthLevels((data && data.sells ? data.sells : []))
+        };
+
+        const HistoricalLiquidity = historicalCollectors.models.HistoricalLiquidity;
+        const nowTimestamp = Math.floor(Date.now() / 1000);
+
+        const pairFilter = {
+          market: market_id,
+          coin_symbol: coin_symbol.toUpperCase(),
+          pair_symbol: pair_symbol.toUpperCase()
+        };
+
+        const shouldFixPrevFromHistory = (market_id.toLowerCase() === 'nestex' && marketdata.data != null && marketdata.data.summary != null && !(Number(marketdata.data.summary.prev || 0) > 0));
+
+        Promise.all([
+          HistoricalLiquidity.findOne({
+            market: market_id,
+            coin_symbol: coin_symbol.toUpperCase(),
+            pair_symbol: pair_symbol.toUpperCase(),
+            provider: { $ne: 'exchange' }
+          }).sort({ timestamp: -1 }).lean(),
+          check_market_history_exists(pairFilter),
+          (shouldFixPrevFromHistory ? fetch_history_point_before_timestamp(pairFilter, (nowTimestamp - 86400)) : Promise.resolve(null))
+        ]).then(([poolRow, hasHistory, prevHistoryPoint]) => {
+          if (market_id.toLowerCase() === 'nestex' && marketdata.data != null && marketdata.data.summary != null) {
+            const summary = marketdata.data.summary;
+            const currentLast = Number(summary.last || 0);
+            const currentPrev = Number(summary.prev || 0);
+
+            if (!(currentPrev > 0) && prevHistoryPoint != null && Number(prevHistoryPoint.last) > 0)
+              summary.prev = Number(prevHistoryPoint.last);
+
+            if (currentLast > 0 && Number(summary.prev || 0) > 0)
+              summary.change = ((currentLast - Number(summary.prev)) / Number(summary.prev)) * 100;
+          }
+
+          let poolLiquidity = null;
+
+          if (poolRow != null) {
+            const raw = (poolRow.raw || {});
+            const quoteKey = `pooled${quoteSymbol.charAt(0)}${quoteSymbol.slice(1).toLowerCase()}`;
+            const pooledBase = Number((raw.pooledCoin != null ? raw.pooledCoin : poolRow.liquidity_base));
+            const pooledQuote = Number((raw[quoteKey] != null ? raw[quoteKey] : (raw.pooledQuote != null ? raw.pooledQuote : (raw.pooledUsdt != null ? raw.pooledUsdt : poolRow.liquidity_quote))));
+            const totalQuote = Number((raw.total != null ? raw.total : pooledQuote));
+
+            poolLiquidity = {
+              provider: poolRow.provider,
+              score: (raw.score != null ? Number(raw.score) : null),
+              pooled_base: (isNaN(pooledBase) ? 0 : pooledBase),
+              pooled_quote: (isNaN(pooledQuote) ? 0 : pooledQuote),
+              total_quote: (isNaN(totalQuote) ? 0 : totalQuote),
+              growth: (raw.growth != null ? raw.growth : null),
+              base_symbol: coin_symbol.toUpperCase(),
+              quote_symbol: quoteSymbol,
+              raw: raw
+            };
+          }
+
+          marketdata.depth_chart = depthChart;
+          marketdata.price_history_30d = { has_data: hasHistory };
+          marketdata.price_history_api_url = '/markets/history/' + encodeURIComponent(market_id) + '/' + encodeURIComponent(coin_symbol.toUpperCase()) + '/' + encodeURIComponent(pair_symbol.toUpperCase());
+          marketdata.pool_liquidity = poolLiquidity;
+
+          // lookup the last updated date if necessary
+          get_last_updated_date(settings.markets_page.page_header.show_last_updated, 'markets_last_updated', function(last_updated_date) {
+            res.render(
+              './market',
+              {
+                active: 'markets',
+                marketdata: marketdata,
+                market: market_id,
+                last_updated: last_updated_date,
+                showSync: db.check_show_sync_message(),
+                customHash: get_custom_hash(),
+                styleHash: get_style_hash(),
+                themeHash: get_theme_hash(),
+                page_title_prefix: settings.localization.mkt_title.replace('{1}', marketdata.market_name + ' (' + marketdata.coin + '/' + marketdata.exchange + ')')
+              }
+            );
+          });
+        }).catch(() => {
+          marketdata.depth_chart = depthChart;
+          marketdata.price_history_30d = { has_data: false };
+          marketdata.price_history_api_url = '/markets/history/' + encodeURIComponent(market_id) + '/' + encodeURIComponent(coin_symbol.toUpperCase()) + '/' + encodeURIComponent(pair_symbol.toUpperCase());
+          marketdata.pool_liquidity = null;
+
+          // lookup the last updated date if necessary
+          get_last_updated_date(settings.markets_page.page_header.show_last_updated, 'markets_last_updated', function(last_updated_date) {
+            res.render(
+              './market',
+              {
+                active: 'markets',
+                marketdata: marketdata,
+                market: market_id,
+                last_updated: last_updated_date,
+                showSync: db.check_show_sync_message(),
+                customHash: get_custom_hash(),
+                styleHash: get_style_hash(),
+                themeHash: get_theme_hash(),
+                page_title_prefix: settings.localization.mkt_title.replace('{1}', marketdata.market_name + ' (' + marketdata.coin + '/' + marketdata.exchange + ')')
+              }
+            );
+          });
         });
       });
     } else {

@@ -18,151 +18,240 @@ block content
       return lengthMenuOpts;
     }
     $(document).ready(function() {
-      $.ajax({
-        method: 'GET',
-        url: '/ext/getnetworkpeers/internal',
-        dataType: 'json'
-      }).done(function(peers) {
-        const connection_table_enabled = #{settings.network_page.connections_table.enabled};
+      const connection_table_enabled = #{settings.network_page.connections_table.enabled};
+      const addnode_table_enabled = #{settings.network_page.addnodes_table.enabled};
+      const onetry_table_enabled = #{settings.network_page.onetry_table.enabled};
+      const statistics_table_enabled = #{settings.network_page.statistics_table.enabled};
 
-        if (connection_table_enabled) {
-          const setting_con_txPerPage = parseInt("#{settings.network_page.connections_table.items_per_page}");
-          const setting_con_port_filter = "#{settings.network_page.connections_table.port_filter}";
-          const column_width = (setting_con_port_filter == '-1' ? '25%' : '20%');
-          let columns = [];
+      function renderConnectionsTable(nodes) {
+        const setting_con_txPerPage = parseInt("#{settings.network_page.connections_table.items_per_page}");
+        const setting_con_port_filter = "#{settings.network_page.connections_table.port_filter}";
+        const column_width = (setting_con_port_filter == '-1' ? '25%' : '20%');
+        let columns = [];
 
-          columns.push({ data: 'address', width: column_width });
+        columns.push({ data: 'address', width: column_width });
 
-          if (setting_con_port_filter != '' && setting_con_port_filter != '-1')
-            columns.push({ data: 'port', width: column_width });
+        if (setting_con_port_filter != '' && setting_con_port_filter != '-1')
+          columns.push({ data: 'port', width: column_width });
 
-          columns.push({ data: 'protocol', width: column_width });
-          columns.push({ data: 'version', width: column_width });
-          columns.push({ data: 'country', width: column_width });
+        columns.push({ data: 'protocol', width: column_width });
+        columns.push({ data: 'subversion', width: column_width });
+        columns.push({ data: 'country', width: column_width });
 
-          $('#connections-table').dataTable({
-            autoWidth: true,
-            searching: false,
-            ordering: true,
-            order: [],
-            responsive: true,
-            lengthChange: true,
-            processing: true,
-            iDisplayLength: setting_con_txPerPage,
-            lengthMenu: generateLengthMenu(setting_con_txPerPage, !{JSON.stringify(settings.network_page.connections_table.page_length_options)}),
-            scrollX: true,
-            language: {
-              paginate: {
-                previous: '<',
-                next: '>'
-              }
-            },
-            data: peers.connection_peers,
-            rowCallback: function (row, data, index) {
-              const flagBlock = (data['country_code'].length > 1 ? '<span class="margin-left-5 fi fi-'+data['country_code'].toLowerCase()+'"></span>' : '');
-              let colIndex = 1;
+        if ($.fn.dataTable.isDataTable('#connections-table'))
+          $('#connections-table').DataTable().destroy();
 
-              $("td:eq(0)", row).html(data['address']).addClass('breakWord');
+        $('#connections-table').dataTable({
+          autoWidth: true,
+          searching: false,
+          ordering: true,
+          order: [],
+          responsive: true,
+          lengthChange: true,
+          processing: true,
+          iDisplayLength: setting_con_txPerPage,
+          lengthMenu: generateLengthMenu(setting_con_txPerPage, !{JSON.stringify(settings.network_page.connections_table.page_length_options)}),
+          scrollX: true,
+          language: {
+            paginate: {
+              previous: '<',
+              next: '>'
+            }
+          },
+          data: nodes,
+          rowCallback: function (row, data, index) {
+            const flagBlock = (data['country_code'] && data['country_code'].length > 1 ? '<span class="margin-left-5 fi fi-'+data['country_code'].toLowerCase()+'"></span>' : '');
+            let colIndex = 1;
 
-              if (setting_con_port_filter != '' && setting_con_port_filter != '-1') {
-                $("td:eq(1)", row).html(data['port'] || '');
-                colIndex = 2;
-              }
+            $("td:eq(0)", row).html(data['address']).addClass('breakWord');
 
-              $(`td:eq(${colIndex})`, row).html(data['protocol']);
-              $(`td:eq(${colIndex + 1})`, row).html(data['version']);
-              $(`td:eq(${colIndex + 2})`, row).html(data['country'] + flagBlock);
-            },
-            fnDrawCallback: function(settings) {
-              fixDataTableColumns();
-              fixFooterHeightAndPosition();
-            },
-            columns: columns
-          });
-        }
+            if (setting_con_port_filter != '' && setting_con_port_filter != '-1') {
+              $("td:eq(1)", row).html(data['port'] || '');
+              colIndex = 2;
+            }
 
-        const addnode_table_enabled = #{settings.network_page.addnodes_table.enabled};
+            $(`td:eq(${colIndex})`, row).html(data['protocol'] || '');
+            $(`td:eq(${colIndex + 1})`, row).html(data['subversion'] || '');
+            $(`td:eq(${colIndex + 2})`, row).html((data['country'] || '') + flagBlock);
+          },
+          fnDrawCallback: function(settings) {
+            fixDataTableColumns();
+            fixFooterHeightAndPosition();
+          },
+          columns: columns
+        });
+      }
 
-        if (addnode_table_enabled) {
-          const setting_add_txPerPage = parseInt("#{settings.network_page.addnodes_table.items_per_page}");
-          const setting_add_port_filter = "#{settings.network_page.addnodes_table.port_filter}";
+      function loadConnections(mode) {
+        $.ajax({
+          method: 'GET',
+          url: '/ext/getnetworknodes/' + mode,
+          dataType: 'json'
+        }).done(function(nodes) {
+          renderConnectionsTable(nodes);
+        });
+      }
 
-          $('#addnodes-table').dataTable({
-            autoWidth: true,
-            searching: false,
-            ordering: false,
-            responsive: true,
-            lengthChange: true,
-            processing: true,
-            iDisplayLength: setting_add_txPerPage,
-            lengthMenu: generateLengthMenu(setting_add_txPerPage, !{JSON.stringify(settings.network_page.addnodes_table.page_length_options)}),
-            scrollX: true,
-            language: {
-              paginate: {
-                previous: '<',
-                next: '>'
-              }
-            },
-            data: peers.addnode_peers,
-            rowCallback: function(row, data, index) {
-              const nodes = 'addnode=' + (data['address'] != null && data['address'].indexOf(':') > -1 ? '[' + data['address'] + ']' : data['address']) + (data['port'] == null || data['port'] == '' || setting_add_port_filter == '' || setting_add_port_filter == '-1' ? '' : ':' + data['port']);
-              $("td:eq(0)", row).css('white-space', 'nowrap').html(`<button class="btn btn-sm btn-copy" type="button"><i class="fa-regular fa-copy"></i></button>&nbsp;<span>${nodes}</span>`);
-            },
-            fnDrawCallback: function(settings) {
-              fixDataTableColumns();
-              fixFooterHeightAndPosition();
-            },
-            columns: [
-              {data: null, width: '100%'}
-            ],
-            columnDefs: [
-              {targets: '_all', className: 'text-start'}
-            ]
-          });
-        }
+      const default_node_mode = '#{settings.network_page.connections_switch.default_mode}';
 
-        const onetry_table_enabled = #{settings.network_page.onetry_table.enabled};
+      if (connection_table_enabled)
+        loadConnections(default_node_mode);
 
-        if (onetry_table_enabled) {
-          const setting_one_txPerPage = parseInt("#{settings.network_page.onetry_table.items_per_page}");
-          const setting_one_port_filter = "#{settings.network_page.onetry_table.port_filter}";
+      $('.node-mode-btn').on('click', function() {
+        const btn = $(this);
 
-          $('#onetry-table').dataTable({
-            autoWidth: true,
-            searching: false,
-            ordering: false,
-            responsive: true,
-            lengthChange: true,
-            processing: true,
-            iDisplayLength: setting_one_txPerPage,
-            lengthMenu: generateLengthMenu(setting_one_txPerPage, !{JSON.stringify(settings.network_page.onetry_table.page_length_options)}),
-            scrollX: true,
-            language: {
-              paginate: {
-                previous: '<',
-                next: '>'
-              }
-            },
-            data: peers.onetry_peers,
-            rowCallback: function(row, data, index) {
-              const nodes = 'addnode ' + (data['address'] != null && data['address'].indexOf(':') > -1 ? '[' + data['address'] + ']' : data['address']) + (data['port'] == null || data['port'] == '' || setting_one_port_filter == '' || setting_one_port_filter == '-1' ? '' : ':' + data['port']) + ' onetry';
-              $("td:eq(0)", row).css('white-space', 'nowrap').html(`<button class="btn btn-sm btn-copy" type="button"><i class="fa-regular fa-copy"></i></button>&nbsp;<span>${nodes}</span>`);
-            },
-            fnDrawCallback: function(settings) {
-              fixDataTableColumns();
-              fixFooterHeightAndPosition();
-            },
-            columns: [
-              {data: null, width: '100%'}
-            ],
-            columnDefs: [
-              {targets: '_all', className: 'text-start'}
-            ]
-          });
-        }
+        if (btn.hasClass('active'))
+          return;
+
+        $('.node-mode-btn').removeClass('active');
+        btn.addClass('active');
+
+        const mode = btn.attr('data-mode');
+
+        if (connection_table_enabled)
+          loadConnections(mode);
+
+        if (statistics_table_enabled)
+          loadStatistics(mode);
       });
 
+      if (addnode_table_enabled || onetry_table_enabled) {
+        $.ajax({
+          method: 'GET',
+          url: '/ext/getaddnodecandidates',
+          dataType: 'json'
+        }).done(function(candidates) {
+          if (addnode_table_enabled) {
+            const setting_add_txPerPage = parseInt("#{settings.network_page.addnodes_table.items_per_page}");
+
+            $('#addnodes-table').dataTable({
+              autoWidth: true,
+              searching: false,
+              ordering: false,
+              responsive: true,
+              lengthChange: true,
+              processing: true,
+              iDisplayLength: setting_add_txPerPage,
+              lengthMenu: generateLengthMenu(setting_add_txPerPage, !{JSON.stringify(settings.network_page.addnodes_table.page_length_options)}),
+              scrollX: true,
+              language: {
+                paginate: {
+                  previous: '<',
+                  next: '>'
+                }
+              },
+              data: candidates,
+              rowCallback: function(row, data, index) {
+                const nodes = 'addnode=' + (data['address'] != null && data['address'].indexOf(':') > -1 ? '[' + data['address'] + ']' : data['address']) + (data['port'] == null || data['port'] == '' ? '' : ':' + data['port']);
+                $("td:eq(0)", row).css('white-space', 'nowrap').html(`<button class="btn btn-sm btn-copy" type="button"><i class="fa-regular fa-copy"></i></button>&nbsp;<span>${nodes}</span>`);
+              },
+              fnDrawCallback: function(settings) {
+                fixDataTableColumns();
+                fixFooterHeightAndPosition();
+              },
+              columns: [
+                {data: null, width: '100%'}
+              ],
+              columnDefs: [
+                {targets: '_all', className: 'text-start'}
+              ]
+            });
+          }
+
+          if (onetry_table_enabled) {
+            const setting_one_txPerPage = parseInt("#{settings.network_page.onetry_table.items_per_page}");
+
+            $('#onetry-table').dataTable({
+              autoWidth: true,
+              searching: false,
+              ordering: false,
+              responsive: true,
+              lengthChange: true,
+              processing: true,
+              iDisplayLength: setting_one_txPerPage,
+              lengthMenu: generateLengthMenu(setting_one_txPerPage, !{JSON.stringify(settings.network_page.onetry_table.page_length_options)}),
+              scrollX: true,
+              language: {
+                paginate: {
+                  previous: '<',
+                  next: '>'
+                }
+              },
+              data: candidates,
+              rowCallback: function(row, data, index) {
+                const nodes = 'addnode ' + (data['address'] != null && data['address'].indexOf(':') > -1 ? '[' + data['address'] + ']' : data['address']) + (data['port'] == null || data['port'] == '' ? '' : ':' + data['port']) + ' onetry';
+                $("td:eq(0)", row).css('white-space', 'nowrap').html(`<button class="btn btn-sm btn-copy" type="button"><i class="fa-regular fa-copy"></i></button>&nbsp;<span>${nodes}</span>`);
+              },
+              fnDrawCallback: function(settings) {
+                fixDataTableColumns();
+                fixFooterHeightAndPosition();
+              },
+              columns: [
+                {data: null, width: '100%'}
+              ],
+              columnDefs: [
+                {targets: '_all', className: 'text-start'}
+              ]
+            });
+          }
+        });
+      }
+
+      function renderStatsTable(selector, rows, showFlags) {
+        if ($.fn.dataTable.isDataTable(selector))
+          $(selector).DataTable().destroy();
+
+        $(selector).dataTable({
+          autoWidth: true,
+          searching: false,
+          ordering: true,
+          order: [[1, 'desc']],
+          responsive: true,
+          lengthChange: false,
+          paging: false,
+          info: false,
+          scrollX: true,
+          data: rows,
+          columns: [
+            { data: 'label', width: '65%' },
+            { data: 'count', width: '35%' }
+          ],
+          rowCallback: function(row, data) {
+            const flagBlock = (showFlags && data['country_code'] && data['country_code'].length > 1 ? '<span class="margin-left-5 fi fi-'+data['country_code'].toLowerCase()+'"></span>' : '');
+            $("td:eq(0)", row).html(data['label'] + flagBlock);
+            $("td:eq(1)", row).html(data['count']);
+          },
+          fnDrawCallback: function(settings) {
+            fixDataTableColumns();
+            fixFooterHeightAndPosition();
+          }
+        });
+      }
+
+      function loadStatistics(mode) {
+        $.ajax({
+          method: 'GET',
+          url: '/ext/getnetworkstats/' + mode,
+          dataType: 'json'
+        }).done(function(stats) {
+          renderStatsTable('#stats-country-table', stats.by_country || [], true);
+          renderStatsTable('#stats-protocol-table', stats.by_protocol || []);
+          renderStatsTable('#stats-subversion-table', stats.by_subversion || []);
+        });
+      }
+
+      if (statistics_table_enabled)
+        loadStatistics(default_node_mode);
+
+      function updateNodeModeSwitchVisibility(activeTabHref) {
+        const showSwitch = (activeTabHref == '#connections' || activeTabHref == '#statistics');
+        $('#node-mode-switch').toggleClass('d-none', !showSwitch);
+      }
+
+      updateNodeModeSwitchVisibility($('ul.nav-tabs a.nav-link.active').attr('href'));
+
       $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+        updateNodeModeSwitchVisibility($(e.target).attr('href'));
         fixDataTableColumns();
         fixFooterHeightAndPosition();
       });
@@ -207,6 +296,13 @@ block content
   - var theadClasses = [];
   if settings.shared_pages.table_header_bgcolor != null && settings.shared_pages.table_header_bgcolor != ''
     - theadClasses.push('table-' + settings.shared_pages.table_header_bgcolor);
+  - var networkTabs = [];
+  if settings.network_page.connections_table.enabled
+    - networkTabs.push('connections');
+  if settings.network_page.addnodes_table.enabled || settings.network_page.onetry_table.enabled
+    - networkTabs.push('addnodes');
+  if settings.network_page.statistics_table.enabled
+    - networkTabs.push('statistics');
   .col-md-12.cardSpacer
     .container
       if settings.network_page.page_header.show_img == true || settings.network_page.page_header.show_title == true || settings.network_page.page_header.show_last_updated == true || settings.network_page.page_header.show_description == true
@@ -238,18 +334,26 @@ block content
       ul.nav.nav-tabs(role='tablist')
         if settings.network_page.connections_table.enabled
           li.nav-item(role='presentation')
-            a.nav-link.active(href='#connections', aria-controls='connections', role='tab', data-bs-toggle='tab') #{settings.localization.net_connections}
+            a.nav-link(class=(networkTabs[0] == 'connections' ? 'active' : ''), href='#connections', aria-controls='connections', role='tab', data-bs-toggle='tab') #{settings.localization.net_connections}
         if settings.network_page.addnodes_table.enabled || settings.network_page.onetry_table.enabled
           li.nav-item(role='presentation')
-            a.nav-link(class=(settings.network_page.connections_table.enabled ? '' : 'active'), href='#addnodes', aria-controls='addnodes', role='tab', data-bs-toggle='tab') #{settings.localization.net_addnodes}
+            a.nav-link(class=(networkTabs[0] == 'addnodes' ? 'active' : ''), href='#addnodes', aria-controls='addnodes', role='tab', data-bs-toggle='tab') #{settings.localization.net_addnodes}
+        if settings.network_page.statistics_table.enabled
+          li.nav-item(role='presentation')
+            a.nav-link(class=(networkTabs[0] == 'statistics' ? 'active' : ''), href='#statistics', aria-controls='statistics', role='tab', data-bs-toggle='tab') Statistics
+      if settings.network_page.connections_table.enabled || settings.network_page.statistics_table.enabled
+        #node-mode-switch.d-flex.justify-content-end.mb-2.mt-2(class=(networkTabs[0] == 'connections' || networkTabs[0] == 'statistics' ? '' : 'd-none'))
+          .btn-group.btn-group-sm(role='group', aria-label='Node visibility')
+            button.btn.btn-outline-primary.node-mode-btn(data-mode='full', type='button', class=(settings.network_page.connections_switch.default_mode != 'all' ? 'active' : '')) Full
+            button.btn.btn-outline-primary.node-mode-btn(data-mode='all', type='button', class=(settings.network_page.connections_switch.default_mode == 'all' ? 'active' : '')) ALL
     .tab-content
       if settings.network_page.connections_table.enabled
-        #connections.container.tab-pane.active(style='margin-top:0;border-top:0;')
+        #connections.container.tab-pane(class=(networkTabs[0] == 'connections' ? 'active' : ''), style='margin-top:0;border-top:0;')
           .card.card-default.border-0
             table#connections-table.table.table-bordered.table-striped.table-paging.table-hover.mobile-border-right
               thead
                 tr(class=theadClasses)
-                  th.text-center #{settings.localization.net_address}
+                  th.text-center #{settings.localization.net_address_hash}
                   if settings.network_page.connections_table.port_filter != null && settings.network_page.connections_table.port_filter != -1
                     th.text-center='Port'
                   th.text-center #{settings.localization.net_protocol}
@@ -257,11 +361,11 @@ block content
                   th.text-center #{settings.localization.net_country}
               tbody.text-center
       if settings.network_page.addnodes_table.enabled || settings.network_page.onetry_table.enabled
-        #addnodes.container.tab-pane(class=(settings.network_page.connections_table.enabled ? '' : 'active'), style='margin-top:0;border-top:0;')
+        #addnodes.container.tab-pane(class=(networkTabs[0] == 'addnodes' ? 'active' : ''), style='margin-top:0;border-top:0;')
           .card.card-default.border-0
             if settings.network_page.addnodes_table.enabled
               .card-body.border-top-0
-                p If you have trouble syncing your wallet, add these lines to your coin daemon .conf file and restart the wallet.
+                p Reachable nodes running compatible software (filtered by the addnode subversion/protocol settings). Add these lines to your coin daemon .conf file and restart the wallet.
                 p
                   em Typically you can access the config file through QT-wallet menu, Tools > Open Wallet Configuration File
               table#addnodes-table.table.table-bordered.table-striped.table-paging.table-hover.mobile-border-right
@@ -271,10 +375,37 @@ block content
                 tbody
             if settings.network_page.onetry_table.enabled
               .card-body.border-top-0
-                p If you have trouble syncing your wallet, run these lines in the coin wallet debug window, or add them with 
+                p Same curated node list. Run these lines in the coin wallet debug window, or add them with
                   em coindaemon-cli
               table#onetry-table.table.table-bordered.table-striped.table-paging.table-hover.mobile-border-right
                 thead
                   tr(class=theadClasses)
                     th OneTry Node Lines
                 tbody
+      if settings.network_page.statistics_table.enabled
+        #statistics.container.tab-pane(class=(networkTabs[0] == 'statistics' ? 'active' : ''), style='margin-top:0;border-top:0;')
+          .row
+            .col-md-4
+              .card.card-default.border-0
+                table#stats-country-table.table.table-bordered.table-striped.table-hover.mobile-border-right
+                  thead
+                    tr(class=theadClasses)
+                      th.text-center Country
+                      th.text-center Count
+                  tbody.text-center
+            .col-md-4
+              .card.card-default.border-0
+                table#stats-protocol-table.table.table-bordered.table-striped.table-hover.mobile-border-right
+                  thead
+                    tr(class=theadClasses)
+                      th.text-center Protocol
+                      th.text-center Count
+                  tbody.text-center
+            .col-md-4
+              .card.card-default.border-0
+                table#stats-subversion-table.table.table-bordered.table-striped.table-hover.mobile-border-right
+                  thead
+                    tr(class=theadClasses)
+                      th.text-center Sub-version
+                      th.text-center Count
+                  tbody.text-center

@@ -66,7 +66,7 @@
 #
 #   - sync.js update     : every 15 min instead of every 1 min
 #   - update_dashboard.js: every 10 min instead of every 1 min
-#   - sync.js market, peers, masternodes: unchanged (no ZMQ equivalent)
+#   - sync.js market, peers, masternodes, network-crawl, network-crawl-full: unchanged (no ZMQ equivalent)
 #   - sync.js checkpoint : unchanged (long-running, scheduled job only)
 #
 # The existing lock files (tmp/*.pid) prevent double-execution if the
@@ -84,8 +84,22 @@
 # Market price sync every 2 minutes (cron only – external APIs, no ZMQ equivalent)
 # */2 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js market >> /var/log/elquidus/sync_market.log 2>&1
 
+# Market history snapshot (5m bucket by default, cadence controlled by cron)
+# Example: run every 5 minutes
+# */5 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js market-history >> /var/log/elquidus/sync_market_history.log 2>&1
+
 # Peer geolocation sync every 5 minutes
 # */5 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js peers >> /var/log/elquidus/sync_peers.log 2>&1
+
+# Network crawler (light: verify stale/new candidates, discover further nodes via p2p addr gossip) every 30 minutes
+# NOTE: separate from the "peers" job above - this independently crawls the wider p2p network rather than just the wallet's own connections
+# NOTE: like the dashboard example near the top of this file, /var/log/elquidus must exist and be writable by the cron user first
+#       (sudo mkdir -p /var/log/elquidus && sudo chown $USER:$USER /var/log/elquidus) - otherwise the shell redirect fails silently
+#       and the job never actually runs, even though cron reports no error
+# */30 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js network-crawl >> /var/log/elquidus/sync_network_crawl.log 2>&1
+
+# Network crawler deep rescan (re-verify + re-geolocate every known node, not just new/stale ones) monthly
+# 0 3 1 * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js network-crawl-full >> /var/log/elquidus/sync_network_crawl_full.log 2>&1
 
 # Masternode list refresh every 5 minutes (if masternodes_page.enabled = true)
 # */5 * * * * cd /opt/eiquidus-test && /usr/bin/node scripts/sync.js masternodes >> /var/log/elquidus/sync_masternodes.log 2>&1

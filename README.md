@@ -532,6 +532,8 @@ reindex-txcount  Rescan and flatten the tx count value for faster access
 reindex-last     Rescan and flatten the last blockindex value for faster access
 checkpoint       Builds history checkpoints for faster historical reads
                  Optional parameter: tx interval (default from sync.checkpoint_tx_interval)
+market-history   Collects 5m market snapshots from local market sync data
+historical-market   Alias for market-history (backward compatible)
 market           Updates market summaries, orderbooks, trade history + charts
 peers            Updates peer info based on local wallet connections
 masternodes      Updates the list of active masternodes on the network
@@ -543,6 +545,7 @@ Notes:
   this likely means that sync.update_timeout in settings.json is set too low.
 - Checkpoint mode is optional but recommended for fast history browser queries.
 - If no interval is provided, checkpoint mode uses sync.checkpoint_tx_interval from settings.json.
+- market-history updates `historical_market_5m` directly (cron-friendly upsert per pair + 5m bucket).
 ```
 
 *It is recommended to do the initial syncing of your blockchain, markets, peers and masternodes using the manual commands below to ensure there are no sync issues. When you are sure that everything is syncing correctly, you should then install the necessary scripts to a crontab at 1+ minute intervals as indicated below*
@@ -577,6 +580,7 @@ Easier crontab syntax using npm scripts, but may not work on some systems depend
 */1 * * * * cd /path/to/explorer && npm run sync-blocks > /dev/null 2>&1
 */1 * * * * cd /path/to/explorer && /path/to/node scripts/update_dashboard.js > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && npm run sync-markets > /dev/null 2>&1
+*/5 * * * * cd /path/to/explorer && /path/to/node scripts/sync.js market-history > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && npm run sync-peers > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && npm run sync-masternodes > /dev/null 2>&1
 0 */6 * * * cd /path/to/explorer && npm run sync-checkpoint > /dev/null 2>&1
@@ -588,6 +592,7 @@ Or, run the crontab by calling the sync script directly, which should work bette
 */1 * * * * cd /path/to/explorer && /path/to/node scripts/sync.js update > /dev/null 2>&1
 */1 * * * * cd /path/to/explorer && /path/to/node scripts/update_dashboard.js > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && /path/to/node scripts/sync.js market > /dev/null 2>&1
+*/5 * * * * cd /path/to/explorer && /path/to/node scripts/sync.js market-history > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && /path/to/node scripts/sync.js peers > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && /path/to/node scripts/sync.js masternodes > /dev/null 2>&1
 0 */6 * * * cd /path/to/explorer && /path/to/node scripts/sync.js checkpoint > /dev/null 2>&1

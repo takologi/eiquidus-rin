@@ -14,6 +14,8 @@ const DashboardBlockStats = require('../models/dashboard_block_stats');
 const HistoryCheckpoint = require('../models/history_checkpoint');
 const HistoryWalletState = require('../models/history_wallet_state');
 const HistoryChainState = require('../models/history_chain_state');
+const historicalCollectors = require('../lib/historical_collectors');
+const networkCrawler = require('../lib/network_crawler');
 const settings = require('../lib/settings');
 const async = require('async');
 
@@ -25,7 +27,6 @@ let database = 'index';
 let block_start = 1;
 let checkpoint_tx_interval = ((settings.sync != null && settings.sync.checkpoint_tx_interval != null && !isNaN(settings.sync.checkpoint_tx_interval) && Number(settings.sync.checkpoint_tx_interval) > 0) ? Number(settings.sync.checkpoint_tx_interval) : 50000);
 let lockCreated = false;
-let watchdogTimer = null;
 let stopSync = false;
 let exiting = false;
 
@@ -77,52 +78,6 @@ function testPortOpen(host, port = 9555, timeout = 500) {
 // async wrapper for testing peer connectivity
 async function isPeerReachable(ip) {
   return await testPortOpen(ip, 9555, 500);
-}
-
-// builds the 'self' peer entry from getnetworkinfo data
-// returns null when this node should not be listed as a peer
-function build_self_peer(info) {
-  try {
-    if (!info || !info.localaddresses || !info.connections) {
-      console.log('Skipping self-peer: insufficient networkinfo');
-      return null;
-    }
-
-    // Find a valid public IPv4 address (exclude private ranges)
-    const publicAddr = info.localaddresses.find(addr =>
-      addr.address &&
-      /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/.test(addr.address) &&
-      !addr.address.startsWith('10.') &&
-      !addr.address.startsWith('192.168.') &&
-      !addr.address.startsWith('172.')
-    );
-
-    if (!publicAddr) {
-      console.log('Skipping self-peer: no public IP address');
-      return null;
-    }
-
-    // Check for inbound connections (means P2P port reachable)
-    if (info.connections_in < 1) {
-      console.log('Skipping self-peer: no inbound connections');
-      return null;
-    }
-
-    const address = publicAddr.address;
-    const port = publicAddr.port || settings.port || 9555;
-
-    return {
-      id: -1,
-      addr: address + ':' + port,
-      version: info.protocolversion,
-      subver: info.subversion,
-      connection_type: 'self',
-      inbound: false
-    };
-  } catch(e) {
-    console.log('Self-peer error:', e);
-    return null;
-  }
 }
 
 // prevent stopping of the sync script to be able to gracefully shut down
@@ -180,9 +135,15 @@ function usage() {
   console.log('reindex-last     Rescan and flatten the last blockindex value for faster access');
   console.log('checkpoint       Builds historical wallet checkpoints based on tx interval');
   console.log('                 Optional parameter: tx interval (default: 50000)');
+  console.log('market-history   Collects historical market snapshots from local market sync data');
+  console.log('historical-market   Alias for market-history (backward compatible)');
+  console.log('historical-network  Collects historical network security snapshot for latest block');
   console.log('market           Updates market summaries, orderbooks, trade history + charts');
   console.log('peers            Updates peer info based on local wallet connections');
   console.log('masternodes      Updates the list of active masternodes on the network');
+  console.log('network-crawl       Discovers/verifies reachable p2p nodes network-wide (light cycle, run frequently e.g. every 30 min)');
+  console.log('network-crawl-full  Re-verifies + re-geolocates every known p2p node (deep cycle, run infrequently e.g. monthly)');
+  console.log('network-crawl-seed  Records handshake data for the local wallet\'s current p2p connections + re-handshakes recently-reachable nodes to keep the Full view fresh (cheap, run often e.g. every 5 min)');
   console.log('');
   console.log('Notes:');
   console.log('- \'current block\' is the latest created block when script is executed.');
@@ -193,59 +154,8 @@ function usage() {
   process.exit(100);
 }
 
-// determine how long this sync type is allowed to run before the watchdog kills it
-// returns 0 or less to disable the watchdog
-function get_watchdog_minutes() {
-  // allow an override for unusual runs (SYNC_WATCHDOG_MINUTES=0 disables the watchdog)
-  if (process.env.SYNC_WATCHDOG_MINUTES != null && process.env.SYNC_WATCHDOG_MINUTES !== '')
-    return parseInt(process.env.SYNC_WATCHDOG_MINUTES);
-
-  switch (database) {
-    case 'peers':
-    case 'masternodes':
-    case 'markets':
-    case 'historical':
-      // these all run on a short cron interval and should finish in seconds
-      return 15;
-    case 'index':
-      // block syncing can legitimately run for hours when reindexing or catching
-      // up from far behind, so only guard the incremental mode that cron runs
-      return (mode == 'update' ? 360 : 0);
-    default:
-      return 0;
-  }
-}
-
-// starts a watchdog that force-exits the script if it runs longer than expected.
-// this is the safety net for any hang: without it a stuck script keeps its lock
-// file forever, and because the process is still alive the stale-lock check in
-// lib.is_locked() cannot clear it, silently blocking every future run
-function start_watchdog() {
-  const minutes = get_watchdog_minutes();
-
-  if (isNaN(minutes) || minutes <= 0)
-    return;
-
-  watchdogTimer = setTimeout(function() {
-    console.log(`Watchdog: ${database} sync exceeded ${minutes} minute(s) - forcing exit to release the lock`);
-
-    // release the lock directly rather than via exit(), since whatever is hung
-    // could just as easily hang a graceful mongoose shutdown
-    if (lockCreated)
-      lib.remove_lock(database);
-
-    process.exit(1);
-  }, minutes * 60000);
-}
-
 // exit function used to cleanup before finishing script
 function exit(exitCode) {
-  // stop the watchdog so it cannot fire during a normal shutdown
-  if (watchdogTimer != null) {
-    clearTimeout(watchdogTimer);
-    watchdogTimer = null;
-  }
-
   // always disconnect mongo connection
   mongoose.disconnect();
 
@@ -851,6 +761,27 @@ function check_show_sync_message(blocks_to_sync) {
 }
 
 function get_market_price(market_array) {
+  function update_market_prices(last_price, last_usd_price, cb) {
+    const safe_last_price = (last_price == null || isNaN(last_price) ? 0 : Number(last_price));
+    const safe_last_usd_price = (last_usd_price == null || isNaN(last_usd_price) ? 0 : Number(last_usd_price));
+
+    Stats.updateOne({coin: settings.coin.name}, {
+      last_price: safe_last_price,
+      last_usd_price: safe_last_usd_price
+    }).then(() => {
+      return cb(null);
+    }).catch((err) => {
+      return cb(err);
+    });
+  }
+
+  function fail_market_sync(error_message) {
+    if (error_message != null && error_message != '')
+      console.log(error_message);
+
+    finish_market_sync(true);
+  }
+
   // check how the market price should be updated
   if (settings.markets_page.market_price == 'COINPAPRIKA') {
     // find the coinpaprika id
@@ -877,23 +808,20 @@ function get_market_price(market_array) {
                 finish_market_sync();
               }).catch((err) => {
                 // error saving stats
-                console.log(err);
-                exit(1);
+                fail_market_sync(err);
               });
             }).catch((err) => {
               // error getting stats
-              console.log(err);
-              exit(1);
+              fail_market_sync(err);
             });
           } else {
             // coinpaprika api returned an error
-            console.log(`${settings.localization.ex_error}: ${err}`);
-            exit(1);
+            fail_market_sync(`${settings.localization.ex_error}: ${err}`);
           }
         });
       } else {
         // coinpaprika_id is not set which should have already thrown an error, so just exit
-        exit(1);
+        fail_market_sync('Error: coinpaprika id is missing');
       }
     });
   } else if (settings.markets_page.market_price == 'COINGECKO') {
@@ -921,37 +849,61 @@ function get_market_price(market_array) {
                 finish_market_sync();
               }).catch((err) => {
                 // error saving stats
-                console.log(err);
-                exit(1);
+                fail_market_sync(err);
               });
             }).catch((err) => {
               // error getting stats
-              console.log(err);
-              exit(1);
+              fail_market_sync(err);
             });
           } else {
             // coingecko api returned an error
-            console.log(`${settings.localization.ex_error}: ${err}`);
-            exit(1);
+            fail_market_sync(`${settings.localization.ex_error}: ${err}`);
           }
         });
       } else {
         // coingecko_id is not set which should have already thrown an error, so just exit
-        exit(1);
+        fail_market_sync('Error: coingecko id is missing');
       }
     });
   } else {
     console.log(`${settings.localization.calculating_market_price}.. ${settings.localization.please_wait}..`);
 
+    const currency = lib.get_market_currency_code();
+    const normalized_currency = (currency == null ? '' : currency.toString().trim().toUpperCase());
+    const normalized_market_array = (Array.isArray(market_array) ? market_array : [])
+      .filter((m) => m != null && m.currency != null && !isNaN(Number(m.last_price)) && Number(m.last_price) > 0)
+      .map((m) => ({
+        currency: m.currency.toString().trim().toUpperCase(),
+        last_price: Number(m.last_price)
+      }));
+
+    if (normalized_market_array.length == 0)
+      return fail_market_sync('Error: Unable to calculate market average because no valid market prices were collected');
+
+    // If all enabled markets already quote against the default market currency, no conversion API is needed.
+    if (normalized_currency != '' && normalized_market_array.every((m) => m.currency === normalized_currency)) {
+      const summed = normalized_market_array.reduce((sum, m) => sum + m.last_price, 0);
+      const direct_last_price = (summed / normalized_market_array.length);
+      const stable_usd_symbols = ['USD', 'USDT', 'USDC', 'BUSD', 'DAI', 'TUSD', 'USDP', 'FDUSD', 'USDE'];
+      const direct_last_usd = (stable_usd_symbols.indexOf(normalized_currency) > -1 ? direct_last_price : 0);
+
+      return update_market_prices(direct_last_price, direct_last_usd, function(update_err) {
+        if (update_err)
+          return fail_market_sync(update_err);
+
+        return finish_market_sync();
+      });
+    }
+
     // get the list of coins from coingecko
-    coingecko_coin_list_api(market_array, function (coin_err, coin_list) {
+    coingecko_coin_list_api(normalized_market_array, function (coin_err, coin_list) {
       // check for errors
       if (coin_err == null) {
         let api_ids = '';
 
         // loop through all unique currencies in the market_array
-        for (let m = 0; m < market_array.length; m++) {
-          const index = coin_list.findIndex(p => p.symbol.toLowerCase() == market_array[m].currency.toLowerCase());
+        for (let m = 0; m < normalized_market_array.length; m++) {
+          const index = coin_list.findIndex(p => p.symbol.toLowerCase() == normalized_market_array[m].currency.toLowerCase());
 
           // check if the market currency is found in the coin list
           if (index > -1) {
@@ -959,65 +911,98 @@ function get_market_price(market_array) {
             api_ids += (api_ids == '' ? '' : ',') + coin_list[index].id;
 
             // add the coingecko id back to the market_array
-            market_array[m].coingecko_id = coin_list[index].id;
+            normalized_market_array[m].coingecko_id = coin_list[index].id;
           } else {
             // coin symbol not found in the api
-            console.log('Error: Cannot find symbol "' + market_array[m].currency + '" in the coingecko api');
+            console.log('Error: Cannot find symbol "' + normalized_market_array[m].currency + '" in the coingecko api');
           }
         }
 
         // check if any api_ids were found
         if (api_ids != '') {
           const coingecko = require('../lib/apis/coingecko');
-          const currency = lib.get_market_currency_code();
 
           // get the market price from coingecko api
-          coingecko.get_avg_market_prices(api_ids, currency, market_array, settings.markets_page.coingecko_api_key, function (mkt_err, last_price, last_usd) {   
+          coingecko.get_avg_market_prices(api_ids, normalized_currency, normalized_market_array, settings.markets_page.coingecko_api_key, function (mkt_err, last_price, last_usd) {
             // check for errors
             if (mkt_err == null) {
-              // update the last usd price
-              Stats.updateOne({coin: settings.coin.name}, {
-                last_price: last_price,
-                last_usd_price: last_usd
-              }).then(() => {
+              update_market_prices(last_price, last_usd, function(update_err) {
+                if (update_err)
+                  return fail_market_sync(update_err);
+
                 // market price updated successfully
-                finish_market_sync();
-              }).catch((err) => {
-                // error saving stat data
-                console.log(err);
-                exit(1);
+                return finish_market_sync();
               });
             } else {
-              // coingecko api returned an error
-              console.log(`Error: ${mkt_err}`);
-              exit(1);
+              // conversion api failed. fallback to direct average in default currency and preserve last_usd if not stable quote.
+              const fallback_sum = normalized_market_array.reduce((sum, m) => sum + m.last_price, 0);
+              const fallback_last_price = (fallback_sum / normalized_market_array.length);
+              const stable_usd_symbols = ['USD', 'USDT', 'USDC', 'BUSD', 'DAI', 'TUSD', 'USDP', 'FDUSD', 'USDE'];
+
+              Stats.findOne({coin: settings.coin.name}).then((stats) => {
+                const fallback_last_usd = (stable_usd_symbols.indexOf(normalized_currency) > -1
+                  ? fallback_last_price
+                  : Number((stats && stats.last_usd_price != null) ? stats.last_usd_price : 0));
+
+                update_market_prices(fallback_last_price, fallback_last_usd, function(update_err) {
+                  if (update_err)
+                    return fail_market_sync(update_err);
+
+                  console.log(`Warning: ${mkt_err}. Falling back to direct average for ${normalized_currency}.`);
+                  return finish_market_sync();
+                });
+              }).catch((stats_err) => {
+                fail_market_sync(`Error: ${mkt_err}. Fallback failed: ${stats_err}`);
+              });
             }
           });
         } else {
           // no api_ids found so cannot continue to getting the usd price and error msgs were already thrown, so just exit
-          exit(1);
+          fail_market_sync('Error: Unable to build market price id list');
         }
       } else {
         // coingecko api returned an error
-        console.log(`Error: ${coin_err}`);
-        exit(1);
+        fail_market_sync(`Error: ${coin_err}`);
       }
     });
   }
 }
 
-function finish_market_sync() {
-  // update markets_last_updated value
-  db.update_last_updated_stats(settings.coin.name, { markets_last_updated: Math.floor(new Date() / 1000) }, function() {
-    // check if the script stopped prematurely
-    if (stopSync) {
-      console.log('Market sync was stopped prematurely');
-      exit(1);
-    } else {
-      console.log('Market sync complete');
-      exit(0);
-    }
-  });
+function finish_market_sync(has_error = false) {
+  function finalize_market_sync() {
+    // update markets_last_updated value
+    db.update_last_updated_stats(settings.coin.name, { markets_last_updated: Math.floor(new Date() / 1000) }, function() {
+      // check if the script stopped prematurely
+      if (stopSync) {
+        console.log('Market sync was stopped prematurely');
+        exit(1);
+      } else if (has_error) {
+        console.log('Market sync completed with errors');
+        exit(1);
+      } else {
+        console.log('Market sync complete');
+        exit(0);
+      }
+    });
+  }
+
+  const historicalSettings = (settings.historical_collectors || {});
+  const historicalMarketSettings = (historicalSettings.market || {});
+
+  if (historicalSettings.enabled === true && historicalMarketSettings.enabled === true) {
+    historicalCollectors.collect_all_configured_markets(function(histErr, histResult) {
+      if (histErr)
+        console.log('Historical market collector warning: ' + histErr);
+      else if (histResult != null)
+        console.log('Historical market collector: ' + histResult.collected.toString() + '/' + histResult.total.toString() + ' pairs processed');
+
+      historicalCollectors.record_coinpaprika_postponed(function() {
+        finalize_market_sync();
+      });
+    });
+  } else
+    finalize_market_sync();
+
 }
 
 function coingecko_coin_list_api(market_symbols, cb) {
@@ -1240,10 +1225,30 @@ function block_sync(reindex, stats) {
                         // check for and update network history data if applicable
                         update_network_history(nstats.last, settings.network_history.enabled, function(network_hist) {
                           // always check for and remove the sync msg if exists
-                          db.remove_sync_message();
+                          const historicalSettings = (settings.historical_collectors || {});
 
-                          console.log(`${(reindex ? 'Reindex' : 'Block sync')} complete (block: %s)`, nstats.last);
-                          exit(0);
+                          function finalize_block_sync_success() {
+                            // always check for and remove the sync msg if exists
+                            db.remove_sync_message();
+
+                            console.log(`${(reindex ? 'Reindex' : 'Block sync')} complete (block: %s)`, nstats.last);
+                            exit(0);
+                          }
+
+                          if (historicalSettings.enabled === true && (historicalSettings.network_security || {}).enabled === true) {
+                            historicalCollectors.collect_network_security(nstats.last, function(secErr) {
+                              if (secErr)
+                                console.log('Historical network collector warning: ' + secErr.message);
+
+                              historicalCollectors.collect_confirmation_policy(function(policyErr) {
+                                if (policyErr)
+                                  console.log('Historical confirmation policy warning: ' + policyErr.message);
+
+                                finalize_block_sync_success();
+                              });
+                            });
+                          } else
+                            finalize_block_sync_success();
                         });
                       });
                     });
@@ -1506,24 +1511,16 @@ function build_history_checkpoints(tx_interval, cb) {
 }
 
 function process_peer_object(peerList, peer) {
+  // NOTE: 'A' (addnodes) and 'O' (onetry) table_types were removed here - the Add Nodes tab on
+  // the network page now sources its candidate list from the network crawler (see
+  // lib/network_crawler.js / models/network_node_statistics.js) instead of from whatever this
+  // wallet happens to be connected to. Only 'C' (connections) peer records are still collected here.
   const table_types = [
     {
       table_type: 'C',
       enabled: settings.network_page.connections_table.enabled,
       port_filter: settings.network_page.connections_table.port_filter,
       hide_protocols: settings.network_page.connections_table.hide_protocols
-    },
-    {
-      table_type: 'A',
-      enabled: settings.network_page.addnodes_table.enabled,
-      port_filter: settings.network_page.addnodes_table.port_filter,
-      hide_protocols: settings.network_page.addnodes_table.hide_protocols
-    },
-    {
-      table_type: 'O',
-      enabled: settings.network_page.onetry_table.enabled,
-      port_filter: settings.network_page.onetry_table.port_filter,
-      hide_protocols: settings.network_page.onetry_table.hide_protocols
     }
   ];
   let newPeers = [];
@@ -1644,14 +1641,9 @@ function bulkUpsertPeers(peerList, cb) {
 
 function removeDuplicatePeers(cb) {
   // remove duplicate peers from the connections table_type
+  // ('A'/'O' table_types are no longer written - see the note in process_peer_object above)
   removeDuplicatePeersByType('C', settings.network_page.connections_table.enabled, settings.network_page.connections_table.port_filter, function() {
-    // remove duplicate peers from the addnodes table_type
-    removeDuplicatePeersByType('A', settings.network_page.addnodes_table.enabled, settings.network_page.addnodes_table.port_filter, function() {
-      // remove duplicate peers from the onetry table_type
-      removeDuplicatePeersByType('O', settings.network_page.onetry_table.enabled, settings.network_page.onetry_table.port_filter, function() {
-        return cb();
-      });
-    });
+    return cb();
   });
 }
 
@@ -1797,6 +1789,24 @@ if (process.argv[2] == null || process.argv[2] == 'index' || process.argv[2] == 
   database = process.argv[2];
 else if (process.argv[2] == 'market')
   database = `${process.argv[2]}s`;
+else if (process.argv[2] == 'market-history' || process.argv[2] == 'historical-market') {
+  mode = 'historical-market';
+  database = 'historical';
+} else if (process.argv[2] == 'historical-network') {
+  mode = 'historical-network';
+  database = 'historical';
+} else if (process.argv[2] == 'network-crawl') {
+  mode = 'network-crawl';
+  database = 'network-crawl';
+} else if (process.argv[2] == 'network-crawl-full') {
+  mode = 'network-crawl-full';
+  database = 'network-crawl-full';
+} else if (process.argv[2] == 'network-crawl-seed') {
+  mode = 'network-crawl-seed';
+  // own lock key (distinct from 'network-crawl') so the frequent, cheap seed-only cadence never
+  // blocks on / gets blocked by the much longer-running light or full crawl cycles
+  database = 'network-crawl-seed';
+}
 else
   usage();
 
@@ -1809,8 +1819,6 @@ if (lib.is_locked([database]) == false) {
   }
   // ensure the lock will be deleted on exit
   lockCreated = true;
-  // start the watchdog so a hang can never hold the lock indefinitely
-  start_watchdog();
   // check the backup, restore and delete locks since those functions would be problematic when updating data
   if (lib.is_locked(['backup', 'restore', 'delete']) == false) {
     // all tests passed. OK to run sync
@@ -1842,7 +1850,64 @@ if (lib.is_locked([database]) == false) {
     mongoose.set('strictQuery', true);
 
     mongoose.connect(dbString).then(() => {
-      if (database == 'index') {
+      if (mode == 'historical-market') {
+        historicalCollectors.collect_all_configured_markets(function(err, result) {
+          if (err)
+            console.log('Historical market collector error: ' + err.message);
+          else
+            console.log('Historical market collector complete: ' + (result ? result.collected : 0).toString() + '/' + (result ? result.total : 0).toString() + ' pairs processed');
+
+          historicalCollectors.record_coinpaprika_postponed(function() {
+            exit(err ? 1 : 0);
+          });
+        });
+      } else if (mode == 'historical-network') {
+        db.get_stats(settings.coin.name, function(nstats) {
+          if (!nstats || nstats.last == null) {
+            console.log('Historical network collector error: unable to determine latest block height from stats');
+            return exit(1);
+          }
+
+          historicalCollectors.collect_network_security(nstats.last, function(secErr) {
+            if (secErr)
+              console.log('Historical network collector warning: ' + secErr.message);
+
+            historicalCollectors.collect_confirmation_policy(function(policyErr) {
+              if (policyErr)
+                console.log('Historical confirmation policy warning: ' + policyErr.message);
+
+              exit((secErr || policyErr) ? 1 : 0);
+            });
+          });
+        });
+      } else if (mode == 'network-crawl') {
+        networkCrawler.run_crawl(function(err, summary) {
+          if (err)
+            console.log('Network crawl error: ' + (err.message || err));
+          else
+            console.log('Network crawl complete: ' + JSON.stringify(summary));
+
+          exit(err ? 1 : 0);
+        });
+      } else if (mode == 'network-crawl-full') {
+        networkCrawler.run_full_rescan(function(err, summary) {
+          if (err)
+            console.log('Network full rescan error: ' + (err.message || err));
+          else
+            console.log('Network full rescan complete: ' + JSON.stringify(summary));
+
+          exit(err ? 1 : 0);
+        });
+      } else if (mode == 'network-crawl-seed') {
+        networkCrawler.run_seed_only(function(err, summary) {
+          if (err)
+            console.log('Network live-peer seed error: ' + (err.message || err));
+          else
+            console.log('Network live-peer seed complete: ' + JSON.stringify(summary));
+
+          exit(err ? 1 : 0);
+        });
+      } else if (database == 'index') {
         db.check_stats(settings.coin.name, function(exists) {
           if (exists == false) {
             console.log('Run \'npm start\' to create database structures before running this script.');
@@ -2030,11 +2095,53 @@ if (lib.is_locked([database]) == false) {
         lib.get_peerinfo(function(body) {
           // add self-peer
           lib.get_networkinfo(function(info) {
-            // determine the self-peer in a dedicated function so that skipping the
-            // self-peer only skips the self-peer. returning from this callback
-            // directly would abandon the rest of the peer sync without ever calling
-            // exit(), which leaves the sync lock behind and hangs the script forever
-            const selfbody = build_self_peer(info);
+            // NOTE: every "skip" case below must only leave selfbody unset and fall through to the
+            // normal peer processing - returning early from this callback would never reach exit(),
+            // leaving the script idling forever on its open db connections while holding the peers
+            // lock (this happened when the job started while the wallet was still loading after a
+            // reboot and getnetworkinfo had no usable data yet)
+            let selfbody = null;
+
+            // a failed getpeerinfo call (e.g. rpc error object while the wallet is still warming up)
+            // is treated the same as no peer data at all
+            if (!Array.isArray(body))
+              body = null;
+
+            try {
+              if (!info || !info.localaddresses || !info.connections) {
+                console.log("Skipping self-peer: insufficient networkinfo");
+              } else {
+                // Find a valid public IPv4 address (exclude private ranges)
+                const publicAddr = info.localaddresses.find(addr =>
+                  addr.address &&
+                  /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/.test(addr.address) &&
+                  !addr.address.startsWith("10.") &&
+                  !addr.address.startsWith("192.168.") &&
+                  !addr.address.startsWith("172.")
+                );
+
+                if (!publicAddr) {
+                  console.log("Skipping self-peer: no public IP address");
+                } else if (info.connections_in < 1) {
+                  // Check for inbound connections (means P2P port reachable)
+                  console.log("Skipping self-peer: no inbound connections");
+                } else {
+                  const address = publicAddr.address;
+                  const port = publicAddr.port || settings.port || 9555;
+
+                  selfbody = {
+                    id: -1,
+                    addr: address + ':' + port,
+                    version: info.protocolversion,
+                    subver: info.subversion,
+                    connection_type: 'self',
+                    inbound: false,
+                  };
+                }
+              }
+            } catch(e) {
+              console.log("Self-peer error:", e);
+            }
 
             if (selfbody != null) {
               if (body == null) {
@@ -2070,12 +2177,7 @@ if (lib.is_locked([database]) == false) {
                   address = address.replace('[', '').replace(']', '');
                 }
 
-                isPeerReachable(address).catch(err => {
-                  // never let a failed reachability check reject, as that would
-                  // skip the loop callback below and stall the sync forever
-                  console.log('Warning: reachability check failed for %s: %s', address, (err && err.message ? err.message : err));
-                  return false;
-                }).then(is_open => {
+                isPeerReachable(address).then(is_open => {
 
                   if (!is_open){
                     console.log('Ignoring unreachable peer %s%s [%s/%s]', address, (port == null || port == '' ? '' : ':' + port.toString()), (i + 1).toString(), body.length.toString());
@@ -2353,11 +2455,18 @@ if (lib.is_locked([database]) == false) {
                                   const index = market_array.findIndex(item => item.currency.toUpperCase() == split_pair[1].toUpperCase());
 
                                   if (index != -1) {
-                                    // update the last_price
-                                    market_array[index].last_price = (market_array[index].last_price + last_price) / 2;
+                                    // update running sum/count and maintain arithmetic mean
+                                    market_array[index].sum_price += Number(last_price || 0);
+                                    market_array[index].sample_count += 1;
+                                    market_array[index].last_price = (market_array[index].sum_price / market_array[index].sample_count);
                                   } else {
                                     // add new object to the array
-                                    market_array.push({currency: split_pair[1], last_price: last_price});
+                                    market_array.push({
+                                      currency: split_pair[1],
+                                      last_price: Number(last_price || 0),
+                                      sum_price: Number(last_price || 0),
+                                      sample_count: 1
+                                    });
                                   }
                                 }
                               } else
