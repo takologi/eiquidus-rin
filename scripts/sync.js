@@ -2187,8 +2187,9 @@ if (lib.is_locked([database]) == false) {
 
                   // try to find this peer in the local database from the last peer sync
                   db.find_peer(address, port, function(peer) {
-                    // check if the peer was found in the local database
-                    if (peer) {
+                    // check if the peer was found in the local database with a resolved country
+                    // (peers saved while the geolocation lookup failed are looked up again)
+                    if (peer && peer.country != null && peer.country != '' && peer.country != 'Unknown') {
                       // process the existing peer to refresh the data
                       const newPeers = process_peer_object(peerList, {
                         address: address,
