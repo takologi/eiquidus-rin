@@ -139,6 +139,8 @@ block content
             tr(class=theadClasses)
               th.text-center.d-table-cell.d-md-none
               th.d-none.d-md-table-cell #{settings.localization.tx_hash}
+              if settings.transaction_page.tx_flags.enabled == true
+                th.text-center.d-none.d-sm-table-cell #{settings.localization.tx_flags}
               th.text-center #{settings.localization.tx_recipients}
               th.text-center #{settings.localization.mkt_amount}
                 span.small.fw-normal  (#{settings.coin.symbol})
@@ -150,6 +152,10 @@ block content
                     span.fa-regular.fa-eye(data-bs-toggle='tooltip', data-bs-placement='top', title=settings.localization.view_tx)
                 td.d-none.d-md-table-cell
                   a.breakWord(href='/tx/' + txn.txid) #{txn.txid}
+                if settings.transaction_page.tx_flags.enabled == true
+                  //- the first tx of a block is always the coinbase
+                  td.text-center.text-nowrap.d-none.d-sm-table-cell
+                    span.tx-flags-placeholder(data-flags=(txn.flags == null ? '' : JSON.stringify(txn.flags)), data-height=block.height, data-coinbase=(block.tx != null && block.tx[0] == txn.txid ? 'true' : 'false'))
                 td.text-center #{txn.vout.length}
                 if txn.vout.length > 0
                   - var total = Number(txn.total / 100000000).toLocaleString('en',{'minimumFractionDigits':2,'maximumFractionDigits':8,'useGrouping':true});

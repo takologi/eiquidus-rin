@@ -12,6 +12,7 @@ var TxSchema = new Schema({
   tx_type: { type: String, default: null },
   op_return: { type: String, default: null },
   algo: { type: String, default: null },
+  flags: { type: Object, default: null },
   has_reorg: { type: Boolean, sparse: true }
 }, {id: false});
 

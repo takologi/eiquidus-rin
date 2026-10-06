@@ -7,6 +7,7 @@ var express = require('express'),
     settings = require('./lib/settings'),
     routes = require('./routes/index'),
     lib = require('./lib/explorer'),
+    tx_flags = require('./lib/tx_flags'),
     historicalCollectors = require('./lib/historical_collectors'),
     db = require('./lib/database'),
     package_metadata = require('./package.json');
@@ -499,6 +500,8 @@ app.use('/ext/gettx/:txid', function(req, res) {
       } else {
         lib.get_rawtransaction(txid, function(rtx) {
           if (rtx && rtx.txid) {
+            const flags = tx_flags.analyze_tx(rtx);
+
             lib.prepare_vin(rtx, function(vin, tx_type_vin) {
               lib.prepare_vout(rtx.vout, rtx.txid, vin, ((typeof rtx.vjoinsplit === 'undefined' || rtx.vjoinsplit == null) ? [] : rtx.vjoinsplit), function(rvout, rvin, tx_type_vout) {
                 const total = lib.calculate_total(rvout);
@@ -511,7 +514,8 @@ app.use('/ext/gettx/:txid', function(req, res) {
                     total: total.toFixed(8),
                     timestamp: rtx.time,
                     blockhash: '-',
-                    blockindex: -1
+                    blockindex: -1,
+                    flags: flags
                   };
 
                   res.send({ active: 'tx', tx: utx, confirmations: rtx.confirmations, blockcount:-1});
@@ -523,7 +527,8 @@ app.use('/ext/gettx/:txid', function(req, res) {
                     total: total.toFixed(8),
                     timestamp: rtx.time,
                     blockhash: rtx.blockhash,
-                    blockindex: rtx.blockheight
+                    blockindex: rtx.blockheight,
+                    flags: flags
                   };
 
                   lib.get_blockcount(function(blockcount) {
@@ -948,6 +953,11 @@ app.use('/ext/getaddresstxs/:address/:start/:length', function(req, res) {
             row.push(Number(out / 100000000));
             row.push(Number(vin / 100000000));
             row.push(Number(txs[i].balance / 100000000));
+
+            if (settings.transaction_page.tx_flags.enabled == true) {
+              row.push(txs[i].blockindex);
+              row.push('tx_flags:' + JSON.stringify({flags: (txs[i].flags == null ? null : txs[i].flags), coinbase: (txs[i].vin.length > 0 && txs[i].vin[0].addresses == 'coinbase')}));
+            }
 
             data.push(row);
           } else {

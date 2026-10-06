@@ -15,6 +15,7 @@ var OrphanedTxSchema = new Schema({
   tx_type: { type: String, default: null },
   op_return: { type: String, default: null },
   algo: { type: String, default: null },
+  flags: { type: Object, default: null },
   // Hash of the orphaned block this TX belonged to (matches orphan_blockhash in Orphans collection)
   orphan_blockhash: { type: String, index: true },
   orphaned_at: { type: Date, default: Date.now }

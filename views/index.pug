@@ -46,14 +46,16 @@ block content
       return ' <span class="badge ' + cls + '" title="Reorg depth ' + depth + '">R' + excl + '</span>';
     }
     $(document).ready(function() {
-      var timestampColumnIndex = 5;
+      // the flags column follows the tx hash column
+      var flagsOffset = (#{settings.transaction_page.tx_flags.enabled} == true ? 1 : 0);
+      var timestampColumnIndex = 5 + flagsOffset;
 
       if (#{settings.block_page.multi_algorithm.show_algo} == true)
         timestampColumnIndex += 1;
       if (#{settings.index_page.show_extracted_by} == true)
         timestampColumnIndex += 1;
 
-      var sortableColumns = [1, 2, 3, 4, timestampColumnIndex];
+      var sortableColumns = [1, 2, 3 + flagsOffset, 4 + flagsOffset, timestampColumnIndex];
       var allColumnIndexes = [];
       var nonSortableColumns = [];
 
@@ -127,12 +129,16 @@ block content
           $("td:eq(0)", row).html('<a href="/tx/' + txhash + '"><span class="fa-regular fa-eye" data-bs-toggle="tooltip" data-bs-placement="top" title="#{settings.localization.view_tx}"></span></a>').addClass('text-center d-table-cell d-md-none');
           $("td:eq(1)", row).html(buildReorgBadge(orphanDepth) + '<a href="/block/' + blockhash + '">' + blockindex + '</a>').addClass('text-end');
           $("td:eq(2)", row).html('<a href="/tx/' + txhash + '">' + txhash + '</a>').addClass("text-center breakWord d-none d-md-table-cell");
-          $("td:eq(3)", row).html(outputs).addClass("text-center d-none d-sm-table-cell");
-          $("td:eq(4)", row).html(updatedAmount).addClass("text-end text-nowrap");
+
+          if (flagsOffset == 1)
+            $("td:eq(3)", row).html(render_tx_flags_from_row(data, blockindex)).addClass("text-center text-nowrap d-none d-sm-table-cell");
+
+          $("td:eq(" + (3 + flagsOffset) + ")", row).html(outputs).addClass("text-center d-none d-sm-table-cell");
+          $("td:eq(" + (4 + flagsOffset) + ")", row).html(updatedAmount).addClass("text-end text-nowrap");
 
           if (#{settings.block_page.multi_algorithm.show_algo} == true) {
             const algo = (data.length > 6 && data[6].indexOf('algo:') == 0 ? data[6].substring('algo:'.length) : '');
-            $("td:eq(5)", row).html(algo);
+            $("td:eq(" + (5 + flagsOffset) + ")", row).html(algo);
             offset += 1;
           }
 
@@ -159,11 +165,11 @@ block content
               extracted_contents += '</div>';
             }
 
-            $("td:eq(" + (5 + offset) + ")", row).html(extracted_contents).addClass("text-center");
+            $("td:eq(" + (5 + flagsOffset + offset) + ")", row).html(extracted_contents).addClass("text-center");
             offset += 1;
           }
 
-          $("td:eq(" + (5 + offset) + ")", row).html('<span' + (#{settings.shared_pages.date_time.enable_alt_timezone_tooltips} == true ? ' data-bs-toggle="tooltip" data-bs-placement="auto" title="' + format_unixtime(timestamp, true) + '"' : '') + '>' + format_unixtime(timestamp) + '</span>').addClass('text-center');
+          $("td:eq(" + (5 + flagsOffset + offset) + ")", row).html('<span' + (#{settings.shared_pages.date_time.enable_alt_timezone_tooltips} == true ? ' data-bs-toggle="tooltip" data-bs-placement="auto" title="' + format_unixtime(timestamp, true) + '"' : '') + '>' + format_unixtime(timestamp) + '</span>').addClass('text-center');
         },
         fnDrawCallback: function(settings) {
           fixDataTableColumns();
@@ -280,6 +286,8 @@ block content
             th.d-table-cell.d-md-none
             th.text-center #{settings.localization.ex_block}
             th.text-center.d-none.d-md-table-cell #{settings.localization.tx_hash}
+            if settings.transaction_page.tx_flags.enabled == true
+              th.text-center.d-none.d-sm-table-cell #{settings.localization.tx_flags}
             th.text-center.d-none.d-sm-table-cell #{settings.localization.tx_recipients}
             th.text-center #{settings.localization.mkt_amount}
               span.small.fw-normal  (#{settings.coin.symbol})

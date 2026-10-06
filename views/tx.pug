@@ -81,6 +81,60 @@ block content
               td.text-center.table-warning #{confirms}
             td.text-center
               span#timestampCol
+    if settings.transaction_page.tx_flags.enabled == true
+      -
+        var txFlags = settings.transaction_page.tx_flags;
+        var flags = tx.flags;
+        var postFork = (tx.blockindex >= txFlags.fork_height);
+        var hashtypeName = function(h) {
+          var base = {1: 'ALL', 2: 'NONE', 3: 'SINGLE'}[h & 0x1f];
+          return (base == null ? 'undefined' : base + (h & 0x40 ? '|FORKID' : '') + (h & 0x80 ? '|ANYONECANPAY' : ''));
+        };
+        var hex = function(n, len) { return '0x' + ('0'.repeat(len) + (n >>> 0).toString(16)).slice(-len); };
+        var signal = (flags == null || flags.cb_tag == null ? null : txFlags.signal_tags.find(function(s) { return flags.cb_tag.indexOf(s.tag) > -1; }));
+      .card.card-default.border-0.cardSpacer
+        .card-header
+          strong #{settings.localization.tx_flags}
+          span.ms-2
+            span.tx-flags-placeholder(data-flags=(flags == null ? '' : JSON.stringify(flags)), data-height=tx.blockindex)
+        table#tx-flags-table.table.table-bordered.table-striped.summary-table.mobile-border-right
+          tbody
+            if flags == null
+              tr
+                td.text-muted #{settings.localization.tx_flags_not_analysed}
+            else
+              tr
+                th.w-25 #{settings.localization.tx_flags_version}
+                td
+                  span #{flags.version} (#{hex(flags.version, 8)})
+                  if flags.version == 0x52494e33
+                    span.ms-2.text-muted #{settings.localization.tx_flags_rin3}
+              tr
+                th.w-25 #{settings.localization.tx_flags_signatures}
+                td
+                  span #{flags.sigs}
+                  each h in flags.sighash
+                    div
+                      span.font-monospace #{hashtypeName(h)} (#{hex(h, 2)})
+                      if (h & 0x40) && !postFork
+                        span.ms-2.text-muted #{settings.localization.tx_flags_forkid_prefork.replace('{1}', txFlags.fork_height)}
+                      else if !(h & 0x40) && postFork
+                        span.ms-2.text-danger #{settings.localization.tx_flags_legacy_postfork.replace('{1}', txFlags.fork_height)}
+              if !(tx.vin.length > 0 && tx.vin[0].addresses == 'coinbase')
+                tr
+                  th.w-25 #{settings.localization.tx_flags_unsigned}
+                  td
+                    span #{flags.unsigned}
+                    if flags.unsigned > 0
+                      span.ms-2.text-muted #{settings.localization.tx_flags_unsigned_note}
+              else
+                tr
+                  th.w-25 #{settings.localization.tx_flags_cb_tag}
+                  td
+                    span.font-monospace #{(flags.cb_tag == null ? '-' : flags.cb_tag)}
+                    if signal != null
+                      span.badge.bg-success.ms-2 #{signal.label}
+                      span.ms-2.text-muted #{settings.localization.tx_flags_signal_note}
     if tx.vout.length < 1
       .alert.alert-info.text-center(role='alert', style='margin-bottom:0;')
         strong #{settings.localization.tx_nonstandard}

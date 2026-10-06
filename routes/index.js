@@ -3,6 +3,7 @@ const router = express.Router();
 const settings = require('../lib/settings');
 const db = require('../lib/database');
 const lib = require('../lib/explorer');
+const tx_flags = require('../lib/tx_flags');
 const historicalCollectors = require('../lib/historical_collectors');
 const async = require('async');
 const Orphans = require('../models/orphans');
@@ -186,6 +187,8 @@ function get_block_data_from_wallet(block, res, orphan) {
   async.eachSeries(block.tx, function(block_tx, loop) {
     lib.get_rawtransaction(block_tx, function(tx) {
       if (tx && tx != `${settings.localization.ex_error}: ${settings.localization.check_console}`) {
+        const flags = tx_flags.analyze_tx(tx);
+
         lib.prepare_vin(tx, function(vin, tx_type_vin) {
           lib.prepare_vout(tx.vout, block_tx, vin, ((!settings.blockchain_specific.zksnarks.enabled || typeof tx.vjoinsplit === 'undefined' || tx.vjoinsplit == null) ? [] : tx.vjoinsplit), function(vout, nvin, tx_type_vout) {
             const total = lib.calculate_total(vout);
@@ -193,7 +196,8 @@ function get_block_data_from_wallet(block, res, orphan) {
             ntxs.push({
               txid: block_tx,
               vout: vout,
-              total: total.toFixed(8)
+              total: total.toFixed(8),
+              flags: flags
             });
 
             if (settings.block_page.show_extracted_by == true) {
@@ -541,6 +545,8 @@ function route_get_tx(res, txid) {
       } else {
         lib.get_rawtransaction(txid, function(rtx) {
           if (rtx && rtx.txid) {
+            const flags = tx_flags.analyze_tx(rtx);
+
             lib.prepare_vin(rtx, function(vin, tx_type_vin) {
               lib.prepare_vout(rtx.vout, rtx.txid, vin, ((!settings.blockchain_specific.zksnarks.enabled || typeof rtx.vjoinsplit === 'undefined' || rtx.vjoinsplit == null) ? [] : rtx.vjoinsplit), function(rvout, rvin, tx_type_vout) {
                 const total = lib.calculate_total(rvout);
@@ -555,7 +561,8 @@ function route_get_tx(res, txid) {
                         total: total.toFixed(8),
                         timestamp: (rtx.time == null ? block.time : rtx.time),
                         blockhash: (rtx.blockhash == null ? '-' : rtx.blockhash),
-                        blockindex: block.height
+                        blockindex: block.height,
+                        flags: flags
                       };
 
                       if (settings.claim_address_page.enabled == true) {
@@ -583,7 +590,8 @@ function route_get_tx(res, txid) {
                           total: total.toFixed(8),
                           timestamp: rtx.time,
                           blockhash: rtx.blockhash,
-                          blockindex: block.height
+                          blockindex: block.height,
+                          flags: flags
                         };
 
                         lib.get_blockcount(function(blockcount) {
@@ -608,7 +616,8 @@ function route_get_tx(res, txid) {
                       total: total.toFixed(8),
                       timestamp: rtx.time,
                       blockhash: rtx.blockhash,
-                      blockindex: rtx.blockheight
+                      blockindex: rtx.blockheight,
+                      flags: flags
                     };
 
                     lib.get_blockcount(function(blockcount) {

@@ -72,8 +72,15 @@ block content
           var total = "<label class='badge bg-" + (amount > '#{settings.movement_page.movement_table.high_warning_flag}' ? 'danger' : (amount > '#{settings.movement_page.movement_table.low_warning_flag}' ? 'warning' : 'success')) + "' style='margin-bottom:0;'>" + amountStr + "</label>";
           $("td:eq(0)", row).html('<a href="/tx/' + txhash + '"><span class="fa-regular fa-eye" data-bs-toggle="tooltip" data-bs-placement="top" title="#{settings.localization.view_tx}"></span></a>').addClass('text-center d-table-cell d-md-none');
           $("td:eq(1)", row).html('<a href="/tx/' + txhash + '">' + txhash + '</a>').addClass('breakWord d-none d-md-table-cell');
-          $("td:eq(2)", row).html(total).addClass(valueAlignClass);
-          $("td:eq(3)", row).html('<span' + (#{settings.shared_pages.date_time.enable_alt_timezone_tooltips} == true ? ' data-bs-toggle="tooltip" data-bs-placement="auto" title="' + format_unixtime(timestamp, true) + '"' : '') + '>' + format_unixtime(timestamp) + '</span>').addClass('text-center');
+
+          // the flags column follows the tx hash column
+          const flagsOffset = (#{settings.transaction_page.tx_flags.enabled} == true ? 1 : 0);
+
+          if (flagsOffset == 1)
+            $("td:eq(2)", row).html(render_tx_flags_from_row(data, blockindex)).addClass('text-center text-nowrap d-none d-sm-table-cell');
+
+          $("td:eq(" + (2 + flagsOffset) + ")", row).html(total).addClass(valueAlignClass);
+          $("td:eq(" + (3 + flagsOffset) + ")", row).html('<span' + (#{settings.shared_pages.date_time.enable_alt_timezone_tooltips} == true ? ' data-bs-toggle="tooltip" data-bs-placement="auto" title="' + format_unixtime(timestamp, true) + '"' : '') + '>' + format_unixtime(timestamp) + '</span>').addClass('text-center');
         },
         fnDrawCallback: function(settings) {
           fixDataTableColumns();
@@ -157,6 +164,8 @@ block content
           tr(class=theadClasses)
             th.d-table-cell.d-md-none
             th.d-none.d-md-table-cell #{settings.localization.tx_hash}
+            if settings.transaction_page.tx_flags.enabled == true
+              th.text-center.d-none.d-sm-table-cell #{settings.localization.tx_flags}
             th.text-center #{settings.localization.mkt_amount}
               span.small.fw-normal  (#{settings.coin.symbol})
             th.text-center #{settings.localization.timestamp}

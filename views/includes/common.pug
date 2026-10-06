@@ -61,3 +61,101 @@ script.
     if (!decimalStr) return '';
     return decimalStr.replace(/(\d{3})/g, '$1 ').trim();
   }
+  const txFlagsSettings = !{JSON.stringify({fork_height: settings.transaction_page.tx_flags.fork_height, signal_tags: settings.transaction_page.tx_flags.signal_tags, rin3_version: 0x52494e33, text: {not_analysed: settings.localization.tx_flags_not_analysed, version: settings.localization.tx_flags_version, signatures: settings.localization.tx_flags_signatures, unsigned: settings.localization.tx_flags_unsigned, cb_tag: settings.localization.tx_flags_cb_tag, rin3: settings.localization.tx_flags_rin3, forkid_prefork: settings.localization.tx_flags_forkid_prefork, legacy_postfork: settings.localization.tx_flags_legacy_postfork, unsigned_note: settings.localization.tx_flags_unsigned_note, coinbase: settings.localization.tx_flags_coinbase, signal_note: settings.localization.tx_flags_signal_note}})};
+
+  function escape_html(text) {
+    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function tx_flags_badge(cls, label, title) {
+    return '<span class="badge ' + cls + ' me-1" data-bs-toggle="tooltip" data-bs-placement="top" title="' + escape_html(title) + '">' + escape_html(label) + '</span>';
+  }
+
+  function hashtype_short_name(hashtype) {
+    const base = {1: 'ALL', 2: 'NONE', 3: 'SINGLE'}[hashtype & 0x1f];
+
+    if (base == null)
+      return '0x' + ('0' + hashtype.toString(16)).slice(-2);
+
+    return base + (hashtype & 0x40 ? '+FID' : '') + (hashtype & 0x80 ? '+ACP' : '');
+  }
+
+  function hashtype_full_name(hashtype) {
+    return hashtype_short_name(hashtype).replace('+FID', '|FORKID').replace('+ACP', '|ANYONECANPAY');
+  }
+
+  // short form of the tx flags as a row of badges
+  // coinbase is not stored in the flags, it is shown only in the tx lists
+  function render_tx_flags(flags, blockindex, coinbase) {
+    const text = txFlagsSettings.text;
+    let html = (coinbase == true ? tx_flags_badge('bg-white text-dark', 'C', text.coinbase) : '');
+
+    if (flags == null)
+      return '<span class="tx-flags">' + html + '<span class="text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="' + escape_html(text.not_analysed) + '">&mdash;</span></span>';
+
+    const post_fork = (blockindex != null && blockindex >= txFlagsSettings.fork_height);
+
+    // version
+    if (flags.version == txFlagsSettings.rin3_version)
+      html += tx_flags_badge('bg-info text-dark', 'RIN3', text.version + ' ' + flags.version + ': ' + text.rin3);
+    else
+      html += tx_flags_badge((flags.version == 1 || flags.version == 2 ? 'bg-light text-dark' : 'bg-warning text-dark'), 'v' + flags.version, text.version + ' ' + flags.version);
+
+    // signature hashtypes
+    (flags.sighash || []).forEach(function(hashtype) {
+      const forkid = ((hashtype & 0x40) != 0);
+      let cls = (forkid ? 'bg-success' : 'bg-light text-dark');
+      let title = hashtype_full_name(hashtype) + ' (' + text.signatures.toLowerCase() + ': ' + flags.sigs + ')';
+
+      if (forkid && !post_fork) {
+        cls = 'bg-warning text-dark';
+        title += ' - ' + text.forkid_prefork.replace('{1}', txFlagsSettings.fork_height);
+      } else if (!forkid && post_fork) {
+        cls = 'bg-danger';
+        title += ' - ' + text.legacy_postfork.replace('{1}', txFlagsSettings.fork_height);
+      }
+
+      html += tx_flags_badge(cls, hashtype_short_name(hashtype), title);
+    });
+
+    // inputs without an ecdsa signature
+    if (flags.unsigned > 0)
+      html += tx_flags_badge('bg-warning text-dark', 'NOSIG ×' + flags.unsigned, text.unsigned + ': ' + flags.unsigned + ' - ' + text.unsigned_note);
+
+    // coinbase tag
+    if (flags.cb_tag != null) {
+      const signal = (txFlagsSettings.signal_tags || []).find(function(signal_tag) { return flags.cb_tag.indexOf(signal_tag.tag) > -1; });
+      const label = (flags.cb_tag.length > 24 ? flags.cb_tag.substring(0, 23) + '…' : flags.cb_tag);
+
+      if (signal != null)
+        html += tx_flags_badge('bg-success', label, text.cb_tag + ': ' + flags.cb_tag + ' - ' + signal.label + ' (' + text.signal_note.toLowerCase() + ')');
+      else
+        html += tx_flags_badge('border border-info text-info', label, text.cb_tag + ': ' + flags.cb_tag);
+    }
+
+    return '<span class="tx-flags">' + html + '</span>';
+  }
+
+  // short form of the tx flags from an internal datatables row that carries a 'tx_flags:{"flags":...,"coinbase":...}' element
+  function render_tx_flags_from_row(data, blockindex) {
+    const elem = data.find(function(value) { return (typeof value === 'string' && value.indexOf('tx_flags:') == 0); });
+
+    if (elem == null)
+      return '';
+
+    const payload = JSON.parse(elem.substring('tx_flags:'.length));
+
+    return render_tx_flags(payload.flags, blockindex, payload.coinbase);
+  }
+
+  // fill server-rendered placeholders: span.tx-flags-placeholder(data-flags='...' data-height='...' data-coinbase='true|false')
+  $(document).ready(function() {
+    $('.tx-flags-placeholder').each(function() {
+      const raw_flags = $(this).attr('data-flags');
+
+      $(this).replaceWith(render_tx_flags((raw_flags == null || raw_flags == '' ? null : JSON.parse(raw_flags)), parseInt($(this).attr('data-height')), $(this).attr('data-coinbase') == 'true'));
+    });
+
+    if (typeof enableTooltips === 'function')
+      enableTooltips();
+  });

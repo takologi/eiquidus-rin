@@ -303,6 +303,7 @@ function update_orphans(orphan_index, orphan_current, last_blockindex, timeout, 
                               tx_type: doc.tx_type,
                               op_return: doc.op_return,
                               algo: doc.algo,
+                              flags: doc.flags,
                               orphan_blockhash: orphanBlockhash,
                               orphaned_at: new Date()
                             };

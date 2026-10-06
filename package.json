@@ -26,6 +26,7 @@
     "sync-network-crawl": "node ./scripts/sync.js network-crawl",
     "sync-network-crawl-full": "node ./scripts/sync.js network-crawl-full",
     "backfill-nestex-history": "node ./scripts/backfill_nestex_history.js",
+    "backfill-tx-flags": "node ./scripts/backfill_tx_flags.js",
     "check-blocks": "node ./scripts/sync.js index check",
     "reindex": "node ./scripts/sync.js index reindex",
     "reindex-rich": "node ./scripts/sync.js index reindex-rich",
